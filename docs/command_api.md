@@ -1,4 +1,4 @@
-# Command API 
+# Command API
 
 This guide explains how to build commands for the Quinn bot using the defined TypeScript interfaces.
 
@@ -17,7 +17,7 @@ The command struct must be the `default` export of the file.
 ### Optional Properties
 
 - `category` (`string`): This is automatically populated by the bot based on the directory the command file resides in (e.g., placing the file in `commands/admin/` sets the category to `ADMIN`).
-- `options` (`Array`): An array of `ApplicationCommandOption` structs utilized heavily to register Discord Slash Command options. 
+- `options` (`Array`): An array of `ApplicationCommandOption` structs utilized heavily to register Discord Slash Command options.
   - Represents arguments that can be passed to the command (e.g., `user`, `reason`).
 - `conf` (`CommandConfig`): A configuration object applying constraints, validations, and behavioral rules to the command.
 
@@ -41,26 +41,26 @@ import { Command } from "../../types";
 import { ApplicationCommandOptionType } from "discord.js";
 
 const kickUser: Command = {
-    name: "kick",
-    description: "Kicks a user from the server.",
-    conf: {
-        modOnly: true,
-        requireHierarchy: true,
-        cooldown: { time: 5, limit: 1 }
+  name: "kick",
+  description: "Kicks a user from the server.",
+  conf: {
+    modOnly: true,
+    requireHierarchy: true,
+    cooldown: { time: 5, limit: 1 },
+  },
+  options: [
+    {
+      name: "target",
+      description: "The user to kick",
+      type: ApplicationCommandOptionType.User,
+      required: true,
     },
-    options: [
-        {
-            name: "target",
-            description: "The user to kick",
-            type: ApplicationCommandOptionType.User,
-            required: true
-        }
-    ],
-    async execute(ctx) {
-        // Use ctx.args to parse target user via prefix
-        // or interaction options for slash commands.
-        await ctx.reply("User has been kicked (conceptually).");
-    }
+  ],
+  async execute(ctx) {
+    // Use ctx.args to parse target user via prefix
+    // or interaction options for slash commands.
+    await ctx.reply("User has been kicked (conceptually).");
+  },
 };
 
 export default kickUser;

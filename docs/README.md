@@ -25,7 +25,7 @@ USE_TEST_GUILD=true
 TEST_GUILD_ID=your_test_server_id
 ```
 
-## Documentation Reference 
+## Documentation Reference
 
 Please visit the corresponding documentation modules below to understand core architectures and how to build components:
 
@@ -36,5 +36,6 @@ Please visit the corresponding documentation modules below to understand core ar
 ## Quick Context
 
 The project code is primarily housed within the `/src` directory:
+
 - `/src/index.ts` is the initialization footprint.
 - `/src/commands/` holds automated directories mapping to different bot commands.

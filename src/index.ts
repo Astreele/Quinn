@@ -27,9 +27,9 @@ const client = new ExtendedClient({
 async function main() {
     try {
         // Load commands and events
-        await loadCommands(client);
         await loadEvents(client);
-
+        await loadCommands(client);
+       // await registerCommands(client);
         // Login to Discord
         await client.login(process.env.DISCORD_TOKEN);
     } catch (error) {

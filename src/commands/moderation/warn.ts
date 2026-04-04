@@ -1,17 +1,18 @@
 import { ApplicationCommandOptionType } from "discord.js";
-import { Command } from "../../types";
+import { GuildCommand } from "../../types";
 
 // A basic map to store user warnings in memory.
 // Structure: Map<guildId, Map<userId, { reason: string, date: Date }[]>>
 export const warningsDB: Map<string, Map<string, { reason: string; date: Date }[]>> = new Map();
 
-const warn: Command = {
+const warn: GuildCommand = {
     name: "warn",
     description: "Issues a formal warning to a user.",
     category: "moderation",
     conf: {
         modOnly: true,
         requireHierarchy: true,
+        guildOnly: true,
     },
     options: [
         {
@@ -28,11 +29,6 @@ const warn: Command = {
         }
     ],
     async execute(ctx) {
-        if (!ctx.guild) {
-            await ctx.reply("This command can only be used in a server.");
-            return;
-        }
-
         const targetMember = await ctx.parseMember("target", 0);
         const reason = ctx.parseString("reason", 1, true);
 

@@ -1,12 +1,13 @@
 import { ApplicationCommandOptionType } from "discord.js";
-import { Command } from "../../types";
+import { GuildCommand } from "../../types";
 
-const unban: Command = {
+const unban: GuildCommand = {
     name: "unban",
     description: "Revokes a ban on a user.",
     category: "moderation",
     conf: {
         modOnly: true,
+        guildOnly: true,
     },
     options: [
         {
@@ -23,11 +24,6 @@ const unban: Command = {
         }
     ],
     async execute(ctx) {
-        if (!ctx.guild) {
-            await ctx.reply("This command can only be used in a server.");
-            return;
-        }
-
         const targetId = ctx.parseString("userid", 0);
         const reason = ctx.parseString("reason", 1, true) || "No reason provided.";
 

@@ -1,13 +1,14 @@
 import { ApplicationCommandOptionType } from "discord.js";
-import { Command } from "../../types";
+import { GuildCommand } from "../../types";
 
-const timeout: Command = {
+const timeout: GuildCommand = {
     name: "timeout",
     description: "Temporarily stops a user from sending messages or joining voice channels.",
     category: "moderation",
     conf: {
         modOnly: true,
         requireHierarchy: true,
+        guildOnly: true,
     },
     options: [
         {
@@ -30,11 +31,6 @@ const timeout: Command = {
         }
     ],
     async execute(ctx) {
-        if (!ctx.guild) {
-            await ctx.reply("This command can only be used in a server.");
-            return;
-        }
-
         const targetMember = await ctx.parseMember("target", 0);
         const durationMinutes = ctx.parseInteger("duration", 1);
         const reason = ctx.parseString("reason", 2, true) || "No reason provided.";

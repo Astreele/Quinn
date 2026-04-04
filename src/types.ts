@@ -29,6 +29,8 @@ export interface CommandConfig {
      * Validates that the executing user has a higher role hierarchy than the target user.
      */
     requireHierarchy?: boolean;
+    /** If true, the command can only be executed inside a server (Guild). */
+    guildOnly?: boolean;
 }
 
 /**
@@ -62,6 +64,22 @@ export interface Command {
      * @param ctx The abstracted Context wrapper detailing the invocation.
      */
     execute: (ctx: Context) => Promise<void>;
+}
+
+/**
+ * A specialized Context type that guarantees guild, channel, and member are not null.
+ */
+export type GuildContext = Context & {
+    get guild(): import("discord.js").Guild;
+    get channel(): import("discord.js").TextBasedChannel;
+    get member(): import("discord.js").GuildMember;
+};
+
+/**
+ * Represents a unified bot command that is strictly executed within a guild.
+ */
+export interface GuildCommand extends Omit<Command, 'execute'> {
+    execute: (ctx: GuildContext) => Promise<void>;
 }
 
 /**

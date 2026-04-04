@@ -1,13 +1,14 @@
 import { ApplicationCommandOptionType } from "discord.js";
-import { Command } from "../../types";
+import { GuildCommand } from "../../types";
 
-const ban: Command = {
+const ban: GuildCommand = {
     name: "ban",
     description: "Bans a specified user from the server.",
     category: "moderation",
     conf: {
         modOnly: true,
         requireHierarchy: true,
+        guildOnly: true,
     },
     options: [
         {
@@ -24,11 +25,6 @@ const ban: Command = {
         }
     ],
     async execute(ctx) {
-        if (!ctx.guild) {
-            await ctx.reply("This command can only be used in a server.");
-            return;
-        }
-
         const targetUser = await ctx.parseUser("target", 0);
         const reason = ctx.parseString("reason", 1, true) || "No reason provided.";
 

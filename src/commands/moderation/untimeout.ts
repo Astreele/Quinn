@@ -1,13 +1,14 @@
 import { ApplicationCommandOptionType } from "discord.js";
-import { Command } from "../../types";
+import { GuildCommand } from "../../types";
 
-const untimeout: Command = {
+const untimeout: GuildCommand = {
     name: "untimeout",
     description: "Removes a timeout from a user.",
     category: "moderation",
     conf: {
         modOnly: true,
         requireHierarchy: true,
+        guildOnly: true,
     },
     options: [
         {
@@ -24,11 +25,6 @@ const untimeout: Command = {
         }
     ],
     async execute(ctx) {
-        if (!ctx.guild) {
-            await ctx.reply("This command can only be used in a server.");
-            return;
-        }
-
         const targetMember = await ctx.parseMember("target", 0);
         const reason = ctx.parseString("reason", 1, true) || "No reason provided.";
 

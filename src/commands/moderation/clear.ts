@@ -1,13 +1,14 @@
 import { ApplicationCommandOptionType, TextChannel, NewsChannel, ThreadChannel } from "discord.js";
-import { Command } from "../../types";
+import { GuildCommand } from "../../types";
 import { CommandContext, MessageContext } from "../../context";
 
-const clear: Command = {
+const clear: GuildCommand = {
     name: "clear",
     description: "Deletes a specified number of consecutive messages in a channel.",
     category: "moderation",
     conf: {
         modOnly: true,
+        guildOnly: true,
     },
     options: [
         {
@@ -18,11 +19,6 @@ const clear: Command = {
         }
     ],
     async execute(ctx) {
-        if (!ctx.guild || !ctx.channel) {
-            await ctx.reply("This command can only be used in a server channel.");
-            return;
-        }
-
         const amount = ctx.parseInteger("amount", 0);
 
         if (!amount || isNaN(amount) || amount < 1 || amount > 100) {

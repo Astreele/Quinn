@@ -1,12 +1,13 @@
 import { ApplicationCommandOptionType, PermissionFlagsBits } from "discord.js";
-import { Command } from "../../types";
+import { GuildCommand } from "../../types";
 
-const lock: Command = {
+const lock: GuildCommand = {
     name: "lock",
     description: "Locks down a channel, preventing regular members from sending messages.",
     category: "moderation",
     conf: {
         modOnly: true,
+        guildOnly: true,
     },
     options: [
         {
@@ -23,11 +24,6 @@ const lock: Command = {
         }
     ],
     async execute(ctx) {
-        if (!ctx.guild) {
-            await ctx.reply("This command can only be used in a server.");
-            return;
-        }
-
         const parsedChannel = await ctx.parseChannel("channel", 0);
         let targetChannel = parsedChannel || ctx.channel;
         

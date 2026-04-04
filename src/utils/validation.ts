@@ -10,9 +10,6 @@ import { logger } from "./logger";
  * @param client The ExtendedClient instance.
  * @param command The command object being requested.
  * @param ctx The originating message or interaction context.
- * @param userId The Discord ID of the user requesting execution.
- * @param member The GuildMember object of the requester, if available.
- * @param channel The TextChannel where the invocation occurred.
  * @param isOwner A boolean indicating if the requester is the bot owner.
  * @returns A string containing an error message if validation fails, or null if validation passes.
  */
@@ -29,6 +26,9 @@ export async function runValidation(
 
     if (conf.ownerOnly && !isOwner)
         return "This Command can only be used by the Bot Owner.";
+
+    if (conf.guildOnly && (!ctx.guild || !ctx.channel || !ctx.member))
+        return "This command can only be used in a server.";
 
     if (conf.nsfwOnly && channel && "nsfw" in channel && !channel.nsfw)
         return "🔞 This command can only be used in NSFW channels.";
@@ -134,7 +134,11 @@ export async function executeWithValidation(
 
     try {
         logger.info(`User ${ctx.author.tag} (${ctx.author.id}) is executing command: ${command.name}`);
-        await command.execute(ctx);
+        if (command.conf?.guildOnly) {
+            await (command as any).execute(ctx as any);
+        } else {
+            await command.execute(ctx);
+        }
         logger.info(`Successfully executed command: ${command.name} for ${ctx.author.tag}`);
     } catch (err) {
         logger.error(`Error executing command ${command.name} for ${ctx.author.tag}:`, err);

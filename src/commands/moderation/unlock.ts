@@ -1,12 +1,13 @@
 import { ApplicationCommandOptionType, PermissionFlagsBits } from "discord.js";
-import { Command } from "../../types";
+import { GuildCommand } from "../../types";
 
-const unlock: Command = {
+const unlock: GuildCommand = {
     name: "unlock",
     description: "Unlocks a previously locked channel.",
     category: "moderation",
     conf: {
         modOnly: true,
+        guildOnly: true,
     },
     options: [
         {
@@ -23,11 +24,6 @@ const unlock: Command = {
         }
     ],
     async execute(ctx) {
-        if (!ctx.guild) {
-            await ctx.reply("This command can only be used in a server.");
-            return;
-        }
-
         const parsedChannel = await ctx.parseChannel("channel", 0);
         let targetChannel = parsedChannel || ctx.channel;
         

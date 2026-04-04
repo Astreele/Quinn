@@ -1,13 +1,14 @@
 import { ApplicationCommandOptionType } from "discord.js";
-import { Command } from "../../types";
+import { GuildCommand } from "../../types";
 
-const kick: Command = {
+const kick: GuildCommand = {
     name: "kick",
     description: "Kicks a specified user from the server.",
     category: "moderation",
     conf: {
         modOnly: true,
         requireHierarchy: true,
+        guildOnly: true,
     },
     options: [
         {
@@ -24,11 +25,6 @@ const kick: Command = {
         }
     ],
     async execute(ctx) {
-        if (!ctx.guild) {
-            await ctx.reply("This command can only be used in a server.");
-            return;
-        }
-
         const targetMember = await ctx.parseMember("target", 0);
         const reason = ctx.parseString("reason", 1, true) || "No reason provided.";
 

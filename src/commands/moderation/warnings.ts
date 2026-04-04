@@ -1,13 +1,14 @@
 import { ApplicationCommandOptionType } from "discord.js";
-import { Command } from "../../types";
+import { GuildCommand } from "../../types";
 import { warningsDB } from "./warn";
 
-const warnings: Command = {
+const warnings: GuildCommand = {
     name: "warnings",
     description: "Displays a list of previous warnings for a specific user.",
     category: "moderation",
     conf: {
         modOnly: true,
+        guildOnly: true,
     },
     options: [
         {
@@ -18,11 +19,6 @@ const warnings: Command = {
         }
     ],
     async execute(ctx) {
-        if (!ctx.guild) {
-            await ctx.reply("This command can only be used in a server.");
-            return;
-        }
-
         const targetMember = await ctx.parseMember("target", 0);
 
         if (!targetMember) {

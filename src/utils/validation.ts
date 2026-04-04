@@ -52,6 +52,13 @@ export async function runValidation(
             return "You do not have the required role to use this.";
     }
 
+    if (conf.disallowedRoles && conf.disallowedRoles.length > 0 && member) {
+        const hasRole = member.roles.cache.some(r =>
+            conf.disallowedRoles!.includes(r.id)
+        );
+        if (hasRole && !isOwner) return "Your role is blocked from using this.";
+    }
+
     if (conf.requireHierarchy && member) {
         let target: GuildMember | null = null;
         if (ctx instanceof CommandContext) {
@@ -136,13 +143,17 @@ export async function executeWithValidation(
     }
 
     try {
-        logger.info(`User ${ctx.author.tag} (${ctx.author.id}) is executing command: ${command.name}`);
+        logger.info(
+            `User ${ctx.author.tag} (${ctx.author.id}) is executing command: ${command.name}`
+        );
         if (command.conf?.guildOnly) {
             await (command as any).execute(ctx as any);
         } else {
             await command.execute(ctx);
         }
-        logger.info(`Successfully executed command: ${command.name} for ${ctx.author.tag}`);
+        logger.info(
+            `Successfully executed command: ${command.name} for ${ctx.author.tag}`
+        );
     } catch (err) {
         logger.error(
             `Error executing command ${command.name} for ${ctx.author.tag}:`,

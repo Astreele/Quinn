@@ -2,7 +2,7 @@ import { Interaction } from "discord.js";
 import { ExtendedClient } from "../client";
 import { BotEvent } from "../types";
 import { executeWithValidation } from "../utils/validation";
-import { Context, CommandContext } from "../context";
+import { CommandContext } from "../context";
 
 const event: BotEvent<"interactionCreate"> = {
     name: "interactionCreate",

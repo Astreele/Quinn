@@ -6,7 +6,7 @@ import { logger } from "./logger";
 
 /**
  * Validates a command execution request against its configured CommandConfig limitations.
- * 
+ *
  * @param client The ExtendedClient instance.
  * @param command The command object being requested.
  * @param ctx The originating message or interaction context.
@@ -21,6 +21,7 @@ export async function runValidation(
 ): Promise<string | null> {
     const conf = { ...command.conf };
     const member = ctx.member;
+    const guild = ctx.guild;
     const channel = ctx.channel;
     const userId = ctx.author.id;
 
@@ -40,6 +41,9 @@ export async function runValidation(
     )
         return "You do not have permission to use this command.";
 
+    if (conf.guildOnly && !guild)
+        return "This Command can only be used inside a server.";
+
     if (conf.allowedRoles && conf.allowedRoles.length > 0 && member) {
         const hasRole = member.roles.cache.some(r =>
             conf.allowedRoles!.includes(r.id)
@@ -51,7 +55,9 @@ export async function runValidation(
     if (conf.requireHierarchy && member) {
         let target: GuildMember | null = null;
         if (ctx instanceof CommandContext) {
-            const user = ctx.command.options.getUser("user") || ctx.command.options.getUser("target");
+            const user =
+                ctx.command.options.getUser("user") ||
+                ctx.command.options.getUser("target");
             if (user && ctx.guild) {
                 target = ctx.guild.members.cache.get(user.id) || null;
             }
@@ -120,15 +126,12 @@ export async function executeWithValidation(
 ) {
     const isOwner = ctx.author.id === process.env.OWNER_ID;
 
-    const error = await runValidation(
-        client,
-        command,
-        ctx,
-        isOwner
-    );
+    const error = await runValidation(client, command, ctx, isOwner);
 
     if (error) {
-        logger.warn(`User ${ctx.author.tag} (${ctx.author.id}) was blocked from running command '${command.name}': ${error}`);
+        logger.warn(
+            `User ${ctx.author.tag} (${ctx.author.id}) was blocked from running command '${command.name}': ${error}`
+        );
         return ctx.reply(error, { ephemeral: true });
     }
 
@@ -141,7 +144,12 @@ export async function executeWithValidation(
         }
         logger.info(`Successfully executed command: ${command.name} for ${ctx.author.tag}`);
     } catch (err) {
-        logger.error(`Error executing command ${command.name} for ${ctx.author.tag}:`, err);
-        ctx.reply("There was an error running this command.", { ephemeral: true });
+        logger.error(
+            `Error executing command ${command.name} for ${ctx.author.tag}:`,
+            err
+        );
+        ctx.reply("There was an error running this command.", {
+            ephemeral: true
+        });
     }
 }

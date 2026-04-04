@@ -12,9 +12,7 @@ jobs:
     permissions:
       # Required to push the commit back to the repo
       contents: write 
-      # workflow permissions are needed to trigger other actions upon commit
-      workflows: write
-
+      
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4

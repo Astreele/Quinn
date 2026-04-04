@@ -30,8 +30,6 @@ export interface CommandConfig {
      * Validates that the executing user has a higher role hierarchy than the target user.
      */
     requireHierarchy?: boolean;
-    /** If true, the command can only be executed inside a server (Guild). */
-    guildOnly?: boolean;
 }
 
 /**

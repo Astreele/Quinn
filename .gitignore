@@ -2,3 +2,4 @@ plan.md
 node_modules
 dist
 .env
+.env_mine

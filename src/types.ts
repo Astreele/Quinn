@@ -1,7 +1,6 @@
 import { ApplicationCommandOptionType, ClientEvents } from "discord.js";
 import { Context } from "./context";
 
-
 /**
  * Configuration options for restricting and controlling command execution.
  */
@@ -12,20 +11,22 @@ export interface CommandConfig {
     ownerOnly?: boolean;
     /** If true, requires the executing user to have the ManageGuild permission. */
     modOnly?: boolean;
+    /** If true, the command can only be executed in guilds. */
+    guildOnly?: boolean;
     /** Array of Role IDs. The user must have at least one of these roles to execute the command. */
     allowedRoles?: string[];
     /** Array of Role IDs. If the user has any of these roles, execution is blocked. */
     disallowedRoles?: string[];
     /** Whether the command can be triggered via a standard message prefix. */
     allowPrefix?: boolean;
-    /** 
+    /**
      * Rate limiting configuration to prevent command spam.
      * @property time The duration of the cooldown period in seconds.
      * @property limit The maximum number of executions allowed within the time period.
      */
     cooldown?: { time: number; limit: number };
-    /** 
-     * Used primarily for moderation commands. 
+    /**
+     * Used primarily for moderation commands.
      * Validates that the executing user has a higher role hierarchy than the target user.
      */
     requireHierarchy?: boolean;
@@ -41,8 +42,8 @@ export interface Command {
     description: string;
     /** Automatically populated category string based on the command's directory location. */
     category?: string;
-    /** 
-     * Arguments or parameters the command accepts. 
+    /**
+     * Arguments or parameters the command accepts.
      * Directly maps to Discord ApplicationCommandOptions.
      */
     options?: Array<{
@@ -57,7 +58,7 @@ export interface Command {
     }>;
     /** Optional execution constraints and rules. */
     conf?: CommandConfig;
-    /** 
+    /**
      * The core execution logic of the command.
      * @param ctx The abstracted Context wrapper detailing the invocation.
      */
@@ -77,5 +78,8 @@ export interface BotEvent<K extends keyof ClientEvents = keyof ClientEvents> {
      * @param client The bot's ExtendedClient instance.
      * @param args The arguments emitted by the event, strictly typed.
      */
-    execute: (client: import("./client").ExtendedClient, ...args: ClientEvents[K]) => void | Promise<unknown> | unknown;
+    execute: (
+        client: import("./client").ExtendedClient,
+        ...args: ClientEvents[K]
+    ) => void | Promise<unknown> | unknown;
 }

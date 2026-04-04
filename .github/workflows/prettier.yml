@@ -12,6 +12,8 @@ jobs:
     permissions:
       # Required to push the commit back to the repo
       contents: write 
+      # workflow permissions are needed to trigger other actions upon commit
+      workflows: write
 
     steps:
       - name: Checkout repository
@@ -23,7 +25,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20' # Use your project's Node version
+          node-version: '24' # Use your project's Node version
 
       - name: Install dependencies
         run: npm ci # Or 'yarn install' / 'pnpm install' depending on your package manager

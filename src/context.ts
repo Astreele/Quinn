@@ -1,3 +1,4 @@
+import { MessageEditOptions, InteractionEditReplyOptions } from "discord.js";
 import {
     ChatInputCommandInteraction,
     Message,
@@ -7,108 +8,51 @@ import {
     TextBasedChannel,
     Client,
     Attachment,
-    MessageFlags
+    MessageFlags,
+    MessageReplyOptions,
+    InteractionReplyOptions,
+    InteractionDeferReplyOptions
 } from "discord.js";
+
+export type ReplyContent = string | MessageReplyOptions | InteractionReplyOptions;
 
 /**
  * A universal wrapper for Discord.js Message and ChatInputCommandInteraction objects.
- * This class abstracts the differences between slash commands and prefix commands,
- * allowing developers to write unified execution logic.
+ * This abstract class provides a common interface for executing commands via either method.
  */
-export class Context {
-    /** Indicates whether this context originated from a slash command interaction. */
-    public isInteraction: boolean;
-    /** The raw interaction object, defined only if isInteraction is true. */
-    public interaction?: ChatInputCommandInteraction;
-    /** The raw message object, defined only if isInteraction is false. */
-    public message?: Message;
+export abstract class Context {
     /** Array of string arguments provided by the user (applicable mainly to prefix commands). */
     public args: string[];
 
-    private replyMsg?: Message;
-    private deferred = false;
-    private replied = false;
-
-    /**
-     * Constructs a new Context instance.
-     * @param ctx The originating Message or ChatInputCommandInteraction.
-     * @param args Optional parsed arguments from the command string.
-     */
-    constructor(
-        ctx: ChatInputCommandInteraction | Message,
-        args: string[] = []
-    ) {
-        this.isInteraction = "isChatInputCommand" in ctx;
-
-        if (this.isInteraction) {
-            this.interaction = ctx as ChatInputCommandInteraction;
-        } else {
-            this.message = ctx as Message;
-        }
-
+    protected constructor(args: string[] = []) {
         this.args = args;
     }
 
     /** Gets the user who invoked the command. */
-    get author(): User {
-        return this.isInteraction
-            ? this.interaction!.user
-            : this.message!.author;
-    }
-
+    abstract get author(): User;
     /** Gets the guild member who invoked the command, if applicable. */
-    get member(): GuildMember | null {
-        return (
-            this.isInteraction ? this.interaction!.member : this.message!.member
-        ) as GuildMember | null;
-    }
-
+    abstract get member(): GuildMember | null;
     /** Gets the guild (server) where the command was executed. */
-    get guild(): Guild | null {
-        return this.isInteraction
-            ? this.interaction!.guild
-            : this.message!.guild;
-    }
-
+    abstract get guild(): Guild | null;
     /** Gets the text channel where the command was executed. */
-    get channel(): TextBasedChannel | null {
-        return this.isInteraction
-            ? this.interaction!.channel
-            : this.message!.channel;
-    }
-
+    abstract get channel(): TextBasedChannel | null;
     /** Gets the Discord bot client instance. */
-    get client(): Client {
-        return this.isInteraction
-            ? this.interaction!.client
-            : this.message!.client;
-    }
-
+    abstract get client(): Client;
     /** Gets the Unix timestamp of when the command was issued. */
-    get createdTimestamp(): number {
-        return this.isInteraction
-            ? this.interaction!.createdTimestamp
-            : this.message!.createdTimestamp;
-    }
+    abstract get createdTimestamp(): number;
 
-    private preparePayload(content: any, ephemeral: boolean) {
-        const payload =
+    protected preparePayload(content: ReplyContent, ephemeral: boolean): any {
+        const payload: any =
             typeof content === "string" ? { content } : { ...content };
 
-        if (ephemeral) payload.flags = MessageFlags.Ephemeral;
+        if (ephemeral) {
+            payload.flags = MessageFlags.Ephemeral;
+        } else if (payload.flags) {
+            delete payload.flags; // Simplify flag handling across endpoints
+        }
         delete payload.ephemeral;
 
         return payload;
-    }
-
-    private async ensureDeferred(ephemeral = false) {
-        if (!this.isInteraction || this.deferred || this.replied) return;
-
-        const deferOptions: any = ephemeral
-            ? { flags: MessageFlags.Ephemeral }
-            : {};
-        await this.interaction!.deferReply(deferOptions);
-        this.deferred = true;
     }
 
     /**
@@ -118,26 +62,147 @@ export class Context {
      * @param options Object containing an ephemeral flag.
      * @returns A promise resolving to the sent Message object.
      */
+    abstract reply(content: ReplyContent, options?: { ephemeral?: boolean }): Promise<Message>;
+    
+    /**
+     * Edits the initial reply sent by the `reply` method.
+     * @param content The new string or message payload.
+     * @returns A promise resolving to the edited Message object.
+     * @throws {Error} If attempting to edit before sending an initial reply.
+     */
+    abstract editReply(content: ReplyContent): Promise<Message>;
+
+    /**
+     * Safely attempts to retrieve an attachment provided by the user.
+     * @param optionName The name of the attachment option (relevant for slash commands). Defaults to "image".
+     * @returns A promise resolving to the Attachment object, or null if none is found.
+     */
+    abstract getAttachment(optionName?: string): Promise<Attachment | null>;
+}
+
+/**
+ * Context subclass specifically for slash commands.
+ */
+export class CommandContext extends Context {
+    public command: ChatInputCommandInteraction;
+    private deferred = false;
+    private replied = false;
+
+    constructor(command: ChatInputCommandInteraction, args: string[] = []) {
+        super(args);
+        this.command = command;
+    }
+
+    get author(): User {
+        return this.command.user;
+    }
+
+    get member(): GuildMember | null {
+        return this.command.member as GuildMember | null;
+    }
+
+    get guild(): Guild | null {
+        return this.command.guild;
+    }
+
+    get channel(): TextBasedChannel | null {
+        return this.command.channel;
+    }
+
+    get client(): Client {
+        return this.command.client;
+    }
+
+    get createdTimestamp(): number {
+        return this.command.createdTimestamp;
+    }
+
+    private async ensureDeferred(ephemeral = false) {
+        if (this.deferred || this.replied) return;
+
+        const deferOptions: InteractionDeferReplyOptions = ephemeral
+            ? { flags: MessageFlags.Ephemeral }
+            : {};
+        await this.command.deferReply(deferOptions);
+        this.deferred = true;
+    }
+
     async reply(
-        content: any,
+        content: ReplyContent,
         options?: { ephemeral?: boolean }
     ): Promise<Message> {
-        if (this.isInteraction) {
-            const isEphemeral =
-                options?.ephemeral ?? content?.ephemeral ?? false;
+        const isEphemeral = options?.ephemeral ?? (typeof content !== "string" && "ephemeral" in content ? content.ephemeral : false) ?? false;
 
-            await this.ensureDeferred(isEphemeral);
-            const payload = this.preparePayload(content, isEphemeral);
+        await this.ensureDeferred(isEphemeral);
+        const payload = this.preparePayload(content, isEphemeral);
 
-            if (!this.replied) {
-                const msg = await this.interaction!.editReply(payload);
-                this.replied = true;
-                return msg as Message;
-            }
-            return (await this.interaction!.followUp(payload)) as Message;
+        if (!this.replied) {
+            const msg = await this.command.editReply(payload);
+            this.replied = true;
+            return msg as Message;
         }
+        return (await this.command.followUp(payload)) as Message;
+    }
 
-        const sent = await this.message!.reply(
+    async editReply(content: ReplyContent): Promise<Message> {
+        if (!this.deferred && !this.replied)
+            throw new Error("Cannot edit before reply/defer!");
+
+        const payload = this.preparePayload(content, false);
+        delete payload.flags;
+
+        return (await this.command.editReply(payload)) as Message;
+    }
+
+    async getAttachment(
+        optionName: string = "image"
+    ): Promise<Attachment | null> {
+        return this.command.options.getAttachment(optionName) || null;
+    }
+}
+
+/**
+ * Context subclass specifically for standard message (prefix) commands.
+ */
+export class MessageContext extends Context {
+    public message: Message;
+    private replyMsg?: Message;
+    private replied = false;
+
+    constructor(message: Message, args: string[] = []) {
+        super(args);
+        this.message = message;
+    }
+
+    get author(): User {
+        return this.message.author;
+    }
+
+    get member(): GuildMember | null {
+        return this.message.member;
+    }
+
+    get guild(): Guild | null {
+        return this.message.guild;
+    }
+
+    get channel(): TextBasedChannel | null {
+        return this.message.channel;
+    }
+
+    get client(): Client {
+        return this.message.client;
+    }
+
+    get createdTimestamp(): number {
+        return this.message.createdTimestamp;
+    }
+
+    async reply(
+        content: ReplyContent,
+        _options?: { ephemeral?: boolean }
+    ): Promise<Message> {
+        const sent = await this.message.reply(
             this.preparePayload(content, false)
         );
         this.replyMsg = sent;
@@ -145,58 +210,31 @@ export class Context {
         return sent;
     }
 
-    /**
-     * Edits the initial reply sent by the `reply` method.
-     * @param content The new string or message payload.
-     * @returns A promise resolving to the edited Message object.
-     * @throws {Error} If attempting to edit before sending an initial reply.
-     */
-    async editReply(content: any): Promise<Message> {
-        if (this.isInteraction) {
-            if (!this.deferred && !this.replied)
-                throw new Error("Cannot edit before reply/defer!");
-
-            const payload = this.preparePayload(content, false);
-            delete payload.flags;
-
-            return (await this.interaction!.editReply(payload)) as Message;
-        }
-
+    async editReply(content: ReplyContent): Promise<Message> {
         if (!this.replyMsg) throw new Error("You must reply() first!");
         return await this.replyMsg.edit(this.preparePayload(content, false));
     }
 
-    /**
-     * Safely attempts to retrieve an attachment provided by the user.
-     * For interactions, it checks the provided optionName.
-     * For messages, it checks direct attachments, or the attachments in the replied-to message.
-     * @param optionName The name of the attachment option (relevant for slash commands). Defaults to "image".
-     * @returns A promise resolving to the Attachment object, or null if none is found.
-     */
     async getAttachment(
-        optionName: string = "image"
+        _optionName: string = "image"
     ): Promise<Attachment | null> {
-        if (this.isInteraction) {
-            return this.interaction!.options.getAttachment(optionName) || null;
-        } else {
-            const msg = this.message!;
+        const msg = this.message;
 
-            if (msg.attachments.size > 0) {
-                return msg.attachments.first() || null;
-            }
-
-            if (msg.reference?.messageId) {
-                try {
-                    const ref = await msg.channel.messages.fetch(
-                        msg.reference.messageId
-                    );
-                    return ref.attachments.first() || null;
-                } catch {
-                    return null;
-                }
-            }
-
-            return null;
+        if (msg.attachments.size > 0) {
+            return msg.attachments.first() || null;
         }
+
+        if (msg.reference?.messageId) {
+            try {
+                const ref = await msg.channel.messages.fetch(
+                    msg.reference.messageId
+                );
+                return ref.attachments.first() || null;
+            } catch {
+                return null;
+            }
+        }
+
+        return null;
     }
 }

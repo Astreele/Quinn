@@ -2,13 +2,13 @@ import { Message } from "discord.js";
 import { ExtendedClient } from "../client";
 import { BotEvent } from "../types";
 import { executeWithValidation } from "../utils/validation";
-import { Context } from "../context";
+import { Context, MessageContext } from "../context";
 
-const event: BotEvent = {
+const event: BotEvent<"messageCreate"> = {
     name: "messageCreate",
     execute: async (client: ExtendedClient, message: Message) => {
         if (message.author.bot) return;
-        const prefix = process.env.PREFX || "$"; // example prefix
+        const prefix = process.env.PREFIX || "$"; // example prefix
         if (!message.content.startsWith(prefix)) return;
 
         const args = message.content.slice(prefix.length).trim().split(/ +/);
@@ -18,7 +18,7 @@ const event: BotEvent = {
         const command = client.commands.get(commandName);
         if (!command) return;
 
-        const ctx = new Context(message, args);
+        const ctx = new MessageContext(message, args);
         await executeWithValidation(client, command, ctx);
     }
 };

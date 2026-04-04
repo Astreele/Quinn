@@ -1,5 +1,6 @@
-import { ApplicationCommandOptionType } from "discord.js";
+import { ApplicationCommandOptionType, ClientEvents } from "discord.js";
 import { Context } from "./context";
+
 
 /**
  * Configuration options for restricting and controlling command execution.
@@ -66,15 +67,15 @@ export interface Command {
 /**
  * Represents an event listener for the bot context.
  */
-export interface BotEvent {
+export interface BotEvent<K extends keyof ClientEvents = keyof ClientEvents> {
     /** The name of the event to listen for (e.g., 'messageCreate', 'ready'). */
-    name: string;
+    name: K;
     /** If true, the listener is triggered only once. */
     once?: boolean;
     /**
      * The core execution logic of the event.
      * @param client The bot's ExtendedClient instance.
-     * @param args The arguments emitted by the event.
+     * @param args The arguments emitted by the event, strictly typed.
      */
-    execute: (client: import("./client").ExtendedClient, ...args: any[]) => void | Promise<any> | any;
+    execute: (client: import("./client").ExtendedClient, ...args: ClientEvents[K]) => void | Promise<unknown> | unknown;
 }

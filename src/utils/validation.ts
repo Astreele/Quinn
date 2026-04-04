@@ -1,7 +1,7 @@
 import { GuildMember, TextChannel, PermissionFlagsBits, Collection } from "discord.js";
 import { Command } from "../types";
 import { ExtendedClient } from "../client";
-import { Context } from "../context";
+import { Context, CommandContext, MessageContext } from "../context";
 import { logger } from "./logger";
 
 /**
@@ -19,18 +19,18 @@ import { logger } from "./logger";
 export async function runValidation(
     client: ExtendedClient,
     command: Command,
-    ctx: any,
-    userId: string,
-    member: GuildMember | null,
-    channel: any,
+    ctx: Context,
     isOwner: boolean
 ): Promise<string | null> {
     const conf = { ...command.conf };
+    const member = ctx.member;
+    const channel = ctx.channel;
+    const userId = ctx.author.id;
 
     if (conf.ownerOnly && !isOwner)
         return "This Command can only be used by the Bot Owner.";
 
-    if (conf.nsfwOnly && !(channel as TextChannel).nsfw)
+    if (conf.nsfwOnly && channel && "nsfw" in channel && !channel.nsfw)
         return "🔞 This command can only be used in NSFW channels.";
 
     if (
@@ -48,8 +48,17 @@ export async function runValidation(
             return "You do not have the required role to use this.";
     }
 
-    if (conf.requireHierarchy && member && "mentions" in ctx) {
-        const target = ctx.mentions.members?.first();
+    if (conf.requireHierarchy && member) {
+        let target: GuildMember | null = null;
+        if (ctx instanceof CommandContext) {
+            const user = ctx.command.options.getUser("user") || ctx.command.options.getUser("target");
+            if (user && ctx.guild) {
+                target = ctx.guild.members.cache.get(user.id) || null;
+            }
+        } else if (ctx instanceof MessageContext) {
+            target = ctx.message.mentions.members?.first() || null;
+        }
+
         if (
             target &&
             target.roles.highest.position >= member.roles.highest.position &&
@@ -83,6 +92,18 @@ export async function runValidation(
     validTimestamps.push(now);
     timestamps.set(userId, validTimestamps);
 
+    setTimeout(() => {
+        const currentTimestamps = timestamps.get(userId);
+        if (currentTimestamps) {
+            const filtered = currentTimestamps.filter(t => t !== now);
+            if (filtered.length === 0) {
+                timestamps.delete(userId);
+            } else {
+                timestamps.set(userId, filtered);
+            }
+        }
+    }, cooldownAmount);
+
     return null;
 }
 
@@ -98,15 +119,11 @@ export async function executeWithValidation(
     ctx: Context
 ) {
     const isOwner = ctx.author.id === process.env.OWNER_ID;
-    const rawCtx = ctx.isInteraction ? ctx.interaction : ctx.message;
 
     const error = await runValidation(
         client,
         command,
-        rawCtx,
-        ctx.author.id,
-        ctx.member,
-        ctx.channel,
+        ctx,
         isOwner
     );
 

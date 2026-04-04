@@ -1,23 +1,26 @@
-import fs from "fs";
+import fs from "fs/promises";
 import path from "path";
 import { ExtendedClient } from "../client";
 import { BotEvent } from "../types";
 import { logger } from "../utils/logger";
 
-export function loadEvents(client: ExtendedClient) {
+export async function loadEvents(client: ExtendedClient) {
     const eventsPath = path.join(__dirname, "..", "events");
-    if (!fs.existsSync(eventsPath)) {
+    try {
+        await fs.access(eventsPath);
+    } catch {
         logger.warn("No events folder found.");
         return;
     }
     
     let eventCount = 0;
-    const eventFiles = fs.readdirSync(eventsPath).filter(file => file.endsWith(".ts") || file.endsWith(".js"));
-
+    const allFiles = await fs.readdir(eventsPath);
+    const eventFiles = allFiles.filter(file => (file.endsWith(".ts") || file.endsWith(".js")) && !file.endsWith(".d.ts"));
+    
     for (const file of eventFiles) {
         const filePath = path.join(eventsPath, file);
-        // eslint-disable-next-line @typescript-eslint/no-require-imports
-        const event: BotEvent = require(filePath).default;
+        const eventModule = await import(filePath);
+        const event: BotEvent = eventModule.default;
         
         if (!event || !event.name || !event.execute) {
             logger.warn(`The event at ${filePath} is missing required properties.`);

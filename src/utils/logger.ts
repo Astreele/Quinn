@@ -14,16 +14,16 @@ function getTimestamp() {
  * Custom logger replacing console.* for better formatting and colorization.
  */
 export const logger = {
-    info(message: string, ...optionalParams: any[]) {
+    info(message: string, ...optionalParams: unknown[]) {
         console.log(`[${getTimestamp()}] ${colors.info}[INFO]${colors.reset} ${message}`, ...optionalParams);
     },
-    warn(message: string, ...optionalParams: any[]) {
+    warn(message: string, ...optionalParams: unknown[]) {
         console.warn(`[${getTimestamp()}] ${colors.warn}[WARN]${colors.reset} ${message}`, ...optionalParams);
     },
-    error(message: string, ...optionalParams: any[]) {
+    error(message: string, ...optionalParams: unknown[]) {
         console.error(`[${getTimestamp()}] ${colors.error}[ERROR]${colors.reset} ${message}`, ...optionalParams);
     },
-    debug(message: string, ...optionalParams: any[]) {
+    debug(message: string, ...optionalParams: unknown[]) {
         console.debug(`[${getTimestamp()}] ${colors.debug}[DEBUG]${colors.reset} ${message}`, ...optionalParams);
     }
 };

@@ -1,13 +1,13 @@
-import { REST, Routes } from "discord.js";
+import { REST, Routes, Client } from "discord.js";
 import { ExtendedClient } from "../client";
 import { BotEvent } from "../types";
 import { logger } from "../utils/logger";
 
-const event: BotEvent = {
-    name: "clientReady",
+const event: BotEvent<"ready"> = {
+    name: "ready",
     once: true,
-    execute: async (client: ExtendedClient) => {
-        logger.info(`Quinn is online! Logged in as ${client.user?.tag}`);
+    execute: async (client: ExtendedClient, readyClient: Client<true>) => {
+        logger.info(`Quinn is online! Logged in as ${readyClient.user?.tag}`);
         logger.info(`Serving ${client.guilds.cache.size} guild(s)`);
         
         if (!process.env.DISCORD_TOKEN) return;

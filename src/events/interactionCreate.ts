@@ -2,9 +2,9 @@ import { Interaction } from "discord.js";
 import { ExtendedClient } from "../client";
 import { BotEvent } from "../types";
 import { executeWithValidation } from "../utils/validation";
-import { Context } from "../context";
+import { Context, CommandContext } from "../context";
 
-const event: BotEvent = {
+const event: BotEvent<"interactionCreate"> = {
     name: "interactionCreate",
     execute: async (client: ExtendedClient, interaction: Interaction) => {
         // if the interaction is not a chat input command, return
@@ -13,7 +13,7 @@ const event: BotEvent = {
         const command = client.commands.get(interaction.commandName);
         if (!command) return;
 
-        const ctx = new Context(interaction, []);
+        const ctx = new CommandContext(interaction, []);
         await executeWithValidation(client, command, ctx);
     }
 };

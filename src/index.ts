@@ -23,9 +23,19 @@ const client = new ExtendedClient({
     ]
 });
 
-// Load commands and events
-loadCommands(client);
-loadEvents(client);
+// Main initialization wrapper
+async function main() {
+    try {
+        // Load commands and events
+        await loadCommands(client);
+        await loadEvents(client);
 
-// Login to Discord
-client.login(process.env.DISCORD_TOKEN);
+        // Login to Discord
+        await client.login(process.env.DISCORD_TOKEN);
+    } catch (error) {
+        logger.error("Failed to start the bot:", error);
+        process.exit(1);
+    }
+}
+
+main();

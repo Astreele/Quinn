@@ -1,0 +1,39 @@
+name: Prettier Format
+
+on:
+  push:
+    branches: [ "main", "dev" ] # Add other branches if needed
+  pull_request:
+    branches: [ "main", "dev" ]
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    permissions:
+      # Required to push the commit back to the repo
+      contents: write 
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          # Required to trigger other actions upon commit
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20' # Use your project's Node version
+
+      - name: Install dependencies
+        run: npm ci # Or 'yarn install' / 'pnpm install' depending on your package manager
+
+      - name: Run Prettier
+        run: npx prettier --write .
+
+      - name: Commit changes
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore: auto-format code with Prettier"
+          commit_user_name: "github-actions[bot]"
+          commit_user_email: "github-actions[bot]@users.noreply.github.com"

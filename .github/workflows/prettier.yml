@@ -30,10 +30,14 @@ jobs:
 
       - name: Run Prettier
         run: npx prettier --write .
+        
+      - name: Get commit message
+        id: commit_msg
+        run: echo "msg=$(git log -1 --pretty=%s)" >> $GITHUB_OUTPUT
 
       - name: Commit changes
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
-          commit_message: "chore: auto-format code with Prettier"
+          commit_message: "chore(prettier): ${{ steps.commit_msg.outputs.msg }}"
           commit_user_name: "github-actions[bot]"
           commit_user_email: "github-actions[bot]@users.noreply.github.com"

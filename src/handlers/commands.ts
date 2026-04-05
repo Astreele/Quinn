@@ -47,16 +47,16 @@ export async function registerCommands(client: ExtendedClient) {
   const testGuildId = process.env.TEST_GUILD_ID;
   const useTestGuild = process.env.USE_TEST_GUILD === "true";
   const clientID = process.env.CLIENT_ID;
-  const discordToken = process.env.DISCORD_TOKEN
+  const discordToken = process.env.DISCORD_TOKEN;
 
   if (!discordToken) {
-        logger.error("Missing DISCORD_TOKEN in .env. Cannot register commands.");
-        return;
+    logger.error("Missing DISCORD_TOKEN in .env. Cannot register commands.");
+    return;
   }
   if (!clientID) {
-        logger.error("Missing CLIENT_ID in .env. Cannot register commands.");
-        return;
-    }
+    logger.error("Missing CLIENT_ID in .env. Cannot register commands.");
+    return;
+  }
 
   const rest = new REST({ version: "10" }).setToken(discordToken);
 

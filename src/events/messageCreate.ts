@@ -8,7 +8,7 @@ const event: BotEvent<"messageCreate"> = {
   name: "messageCreate",
   execute: async (client: ExtendedClient, message: Message) => {
     if (message.author.bot) return;
-    const prefix = "N."; // example prefix
+    const prefix = process.env.PREFIX || "$"; // example prefix
     if (!message.content.startsWith(prefix)) return;
 
     const args = message.content.slice(prefix.length).trim().split(/ +/);

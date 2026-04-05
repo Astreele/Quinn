@@ -5,13 +5,13 @@ import {
   GuildMember,
   Guild,
   TextBasedChannel,
-  Client,
   Attachment,
   MessageFlags,
   MessageReplyOptions,
   InteractionReplyOptions,
   InteractionDeferReplyOptions,
 } from "discord.js";
+import { ExtendedClient } from "./client";
 
 export type ReplyContent =
   | string
@@ -38,8 +38,8 @@ export abstract class Context {
   abstract get guild(): Guild | null;
   /** Gets the text channel where the command was executed. */
   abstract get channel(): TextBasedChannel | null;
-  /** Gets the Discord bot client instance. */
-  abstract get client(): Client;
+  /** Gets the Extended discord bot client instance. */
+  abstract get client(): ExtendedClient;
   /** Gets the Unix timestamp of when the command was issued. */
   abstract get createdTimestamp(): number;
 
@@ -170,8 +170,8 @@ export class CommandContext extends Context {
     return this.command.channel;
   }
 
-  get client(): Client {
-    return this.command.client;
+  get client(): ExtendedClient {
+    return this.command.client as ExtendedClient;
   }
 
   get createdTimestamp(): number {
@@ -287,8 +287,8 @@ export class MessageContext extends Context {
     return this.message.channel;
   }
 
-  get client(): Client {
-    return this.message.client;
+  get client(): ExtendedClient {
+    return this.message.client as ExtendedClient;
   }
 
   get createdTimestamp(): number {

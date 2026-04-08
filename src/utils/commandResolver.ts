@@ -19,7 +19,9 @@ export function resolveMessageCommand(
 
   const requestedSubcommand = args[0]?.toLowerCase();
   const explicitSubcommand = requestedSubcommand
-    ? rootCommand.subcommands?.find((entry) => entry.name === requestedSubcommand)
+    ? rootCommand.subcommands?.find(
+        (entry) => entry.name === requestedSubcommand
+      )
     : undefined;
 
   if (explicitSubcommand) {

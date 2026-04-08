@@ -25,9 +25,19 @@ export type ReplyContent =
 export abstract class Context {
   /** Array of string arguments provided by the user (applicable mainly to prefix commands). */
   public args: string[];
+  /** The resolved root command name. */
+  public commandName: string;
+  /** The resolved subcommand name, if any. */
+  public subcommandName: string | null;
 
-  protected constructor(args: string[] = []) {
+  protected constructor(
+    args: string[] = [],
+    commandName: string = "",
+    subcommandName: string | null = null
+  ) {
     this.args = args;
+    this.commandName = commandName;
+    this.subcommandName = subcommandName;
   }
 
   /** Gets the user who invoked the command. */
@@ -139,6 +149,12 @@ export abstract class Context {
    * Parses an Integer from the arguments/options.
    */
   abstract parseInteger(optionName: string, argIndex?: number): number | null;
+
+  get fullCommandName(): string {
+    return this.subcommandName
+      ? `${this.commandName} ${this.subcommandName}`
+      : this.commandName;
+  }
 }
 
 /**
@@ -149,8 +165,13 @@ export class CommandContext extends Context {
   private deferred = false;
   private replied = false;
 
-  constructor(command: ChatInputCommandInteraction, args: string[] = []) {
-    super(args);
+  constructor(
+    command: ChatInputCommandInteraction,
+    args: string[] = [],
+    commandName: string = command.commandName,
+    subcommandName: string | null = null
+  ) {
+    super(args, commandName, subcommandName);
     this.command = command;
   }
 
@@ -264,10 +285,14 @@ export class CommandContext extends Context {
 export class MessageContext extends Context {
   public message: Message;
   private replyMsg?: Message;
-  private replied = false;
 
-  constructor(message: Message, args: string[] = []) {
-    super(args);
+  constructor(
+    message: Message,
+    args: string[] = [],
+    commandName: string = "",
+    subcommandName: string | null = null
+  ) {
+    super(args, commandName, subcommandName);
     this.message = message;
   }
 
@@ -303,7 +328,6 @@ export class MessageContext extends Context {
       this.preparePayload(content, options?.ephemeral)
     );
     this.replyMsg = sent;
-    this.replied = true;
     return sent;
   }
 

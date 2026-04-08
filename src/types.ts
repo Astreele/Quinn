@@ -32,6 +32,33 @@ export interface CommandConfig {
   requireHierarchy?: boolean;
 }
 
+export interface CommandOption {
+  /** The name of the option. Must be lowercase without spaces. */
+  name: string;
+  /** A description of what the option represents. */
+  description: string;
+  /** The data type expected for this option (e.g., STRING, USER, INTEGER). */
+  type: ApplicationCommandOptionType;
+  /** Whether the user is required to provide this option. */
+  required?: boolean;
+}
+
+export interface Subcommand {
+  /** The subcommand name used under the parent command. */
+  name: string;
+  /** A brief description of the subcommand. Required for slash commands. */
+  description: string;
+  /** Arguments accepted by the subcommand. */
+  options?: CommandOption[];
+  /** Optional execution constraints and rules. */
+  conf?: CommandConfig;
+  /**
+   * The core execution logic of the subcommand.
+   * @param ctx The abstracted Context wrapper detailing the invocation.
+   */
+  execute: (ctx: Context) => Promise<void>;
+}
+
 /**
  * Represents a unified bot command that can be executed via slash interactions or message prefixes.
  */
@@ -42,27 +69,19 @@ export interface Command {
   description: string;
   /** Automatically populated category string based on the command's directory location. */
   category?: string;
-  /**
-   * Arguments or parameters the command accepts.
-   * Directly maps to Discord ApplicationCommandOptions.
-   */
-  options?: Array<{
-    /** The name of the option. Must be lowercase without spaces. */
-    name: string;
-    /** A description of what the option represents. */
-    description: string;
-    /** The data type expected for this option (e.g., STRING, USER, INTEGER). */
-    type: ApplicationCommandOptionType;
-    /** Whether the user is required to provide this option. */
-    required?: boolean;
-  }>;
+  /** Arguments or parameters the command accepts. Directly maps to Discord ApplicationCommandOptions. */
+  options?: CommandOption[];
+  /** Optional slash/prefix subcommands that live under this command. */
+  subcommands?: Subcommand[];
+  /** Optional prefix-only fallback subcommand used when no subcommand token is provided. */
+  defaultSubcommand?: string;
   /** Optional execution constraints and rules. */
   conf?: CommandConfig;
   /**
    * The core execution logic of the command.
    * @param ctx The abstracted Context wrapper detailing the invocation.
    */
-  execute: (ctx: Context) => Promise<void>;
+  execute?: (ctx: Context) => Promise<void>;
 }
 
 /**
@@ -78,7 +97,7 @@ export type GuildContext = Context & {
  * Represents a unified bot command that is strictly executed within a guild.
  */
 export interface GuildCommand extends Omit<Command, "execute"> {
-  execute: (ctx: GuildContext) => Promise<void>;
+  execute?: (ctx: GuildContext) => Promise<void>;
 }
 
 /**

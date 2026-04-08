@@ -1,5 +1,5 @@
 import { GuildMember, PermissionFlagsBits, Collection } from "discord.js";
-import { Command } from "../types";
+import { Command, Subcommand } from "../types";
 import { ExtendedClient } from "../client";
 import { Context, CommandContext, MessageContext } from "../context";
 import { logger } from "./logger";
@@ -15,7 +15,7 @@ import { logger } from "./logger";
  */
 export async function runValidation(
   client: ExtendedClient,
-  command: Command,
+  command: Command | Subcommand,
   ctx: Context,
   isOwner: boolean
 ): Promise<string | null> {
@@ -81,10 +81,12 @@ export async function runValidation(
     }
   }
 
-  if (!client.cooldowns.has(command.name))
-    client.cooldowns.set(command.name, new Collection());
+  const cooldownKey = ctx.fullCommandName || command.name;
 
-  const timestamps = client.cooldowns.get(command.name)!;
+  if (!client.cooldowns.has(cooldownKey))
+    client.cooldowns.set(cooldownKey, new Collection());
+
+  const timestamps = client.cooldowns.get(cooldownKey)!;
   const now = Date.now();
   const cooldownAmount = (conf.cooldown?.time || 3) * 1000;
   const maxUses = conf.cooldown?.limit || 1;
@@ -128,7 +130,7 @@ export async function runValidation(
  */
 export async function executeWithValidation(
   client: ExtendedClient,
-  command: Command,
+  command: Command | Subcommand,
   ctx: Context
 ) {
   const isOwner = ctx.author.id === process.env.OWNER_ID;
@@ -137,26 +139,29 @@ export async function executeWithValidation(
 
   if (error) {
     logger.warn(
-      `User ${ctx.author.tag} (${ctx.author.id}) was blocked from running command '${command.name}': ${error}`
+      `User ${ctx.author.tag} (${ctx.author.id}) was blocked from running command '${ctx.fullCommandName}': ${error}`
     );
     return ctx.reply(error, { ephemeral: true });
   }
 
   try {
     logger.info(
-      `User ${ctx.author.tag} (${ctx.author.id}) is executing command: ${command.name}`
+      `User ${ctx.author.tag} (${ctx.author.id}) is executing command: ${ctx.fullCommandName}`
     );
+    if (!command.execute)
+      throw new Error(`Command ${ctx.fullCommandName} has no execute handler.`);
+
     if (command.conf?.guildOnly) {
       await (command as any).execute(ctx as any);
     } else {
       await command.execute(ctx);
     }
     logger.info(
-      `Successfully executed command: ${command.name} for ${ctx.author.tag}`
+      `Successfully executed command: ${ctx.fullCommandName} for ${ctx.author.tag}`
     );
   } catch (err) {
     logger.error(
-      `Error executing command ${command.name} for ${ctx.author.tag}:`,
+      `Error executing command ${ctx.fullCommandName} for ${ctx.author.tag}:`,
       err
     );
     ctx.reply("There was an error running this command.", {

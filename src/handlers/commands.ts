@@ -3,7 +3,22 @@ import path from "path";
 import { ExtendedClient } from "../client";
 import { Command } from "../types";
 import { logger } from "../utils/logger";
-import { REST, Routes } from "discord.js";
+import { ApplicationCommandOptionType, REST, Routes } from "discord.js";
+
+function buildSlashCommandData(cmd: Command) {
+  return {
+    name: cmd.name,
+    description: cmd.description,
+    options: cmd.subcommands?.length
+      ? cmd.subcommands.map((subcommand) => ({
+          name: subcommand.name,
+          description: subcommand.description,
+          type: ApplicationCommandOptionType.Subcommand,
+          options: subcommand.options || [],
+        }))
+      : cmd.options || [],
+  };
+}
 
 export async function loadCommands(client: ExtendedClient) {
   client.commands.clear();
@@ -26,12 +41,13 @@ export async function loadCommands(client: ExtendedClient) {
       )) {
         const filePath = path.join(fullPath, file);
         delete require.cache[require.resolve(filePath)];
-        const cmdModule = await require(path.join(filePath));
+        const cmdModule = require(filePath);
         const cmd: Command = cmdModule.default;
+        const isRunnable = Boolean(cmd?.execute || cmd?.subcommands?.length);
 
-        if (!cmd || !cmd.name) {
+        if (!cmd || !cmd.name || !isRunnable) {
           logger.warn(
-            `The command at ${file} is missing a required "name" or "execute" property.`
+            `The command at ${file} must define a name and either execute() or at least one subcommand.`
           );
           continue;
         }
@@ -63,16 +79,16 @@ export async function registerCommands(client: ExtendedClient) {
   try {
     logger.info("Started refreshing application (/) commands...");
 
-    const slashCommandsData = client.commands.map((cmd) => ({
-      name: cmd.name,
-      description: cmd.description,
-      options: cmd.options || [],
-    }));
+    const slashCommandsData = client.commands.map(buildSlashCommandData);
 
     if (useTestGuild && testGuildId) {
       logger.debug(`Pushing commands to test server: ${testGuildId}...`);
       await rest.put(Routes.applicationGuildCommands(clientID, testGuildId), {
         body: slashCommandsData,
+      });
+      logger.debug("Clearing global commands to avoid stale duplicates...");
+      await rest.put(Routes.applicationCommands(clientID), {
+        body: [],
       });
       logger.info("Successfully reloaded local guild (/) commands.");
     } else {
@@ -80,9 +96,20 @@ export async function registerCommands(client: ExtendedClient) {
       await rest.put(Routes.applicationCommands(clientID), {
         body: slashCommandsData,
       });
+
+      if (testGuildId) {
+        logger.debug(
+          `Clearing test guild commands in ${testGuildId} to avoid stale duplicates...`
+        );
+        await rest.put(Routes.applicationGuildCommands(clientID, testGuildId), {
+          body: [],
+        });
+      }
+
       logger.info("Successfully reloaded global (/) commands.");
     }
   } catch (error) {
     logger.error("Failed to register slash commands:", error);
+    throw error;
   }
 }

@@ -3,6 +3,7 @@ import { ExtendedClient } from "../client";
 import { BotEvent } from "../types";
 import { executeWithValidation } from "../utils/validation";
 import { MessageContext } from "../context";
+import { resolveMessageCommand } from "../utils/commandResolver";
 
 const event: BotEvent<"messageCreate"> = {
   name: "messageCreate",
@@ -15,13 +16,18 @@ const event: BotEvent<"messageCreate"> = {
     const commandName = args.shift()?.toLowerCase();
     if (!commandName) return;
 
-    const command = client.commands.get(commandName);
-    if (!command) return;
+    const resolved = resolveMessageCommand(client, commandName, args);
+    if (!resolved) return;
 
-    if (command.conf?.allowPrefix === false) return;
+    if (resolved.command.conf?.allowPrefix === false) return;
 
-    const ctx = new MessageContext(message, args);
-    await executeWithValidation(client, command, ctx);
+    const ctx = new MessageContext(
+      message,
+      resolved.args,
+      resolved.rootCommand.name,
+      resolved.subcommandName
+    );
+    await executeWithValidation(client, resolved.command, ctx);
   },
 };
 

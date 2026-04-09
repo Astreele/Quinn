@@ -1,6 +1,7 @@
 import { ChannelType, GuildVerificationLevel } from "discord.js";
 import { GuildCommand } from "../../types";
 import { createInfoEmbed } from "../../utils/embedBuilder";
+import { formatDate } from "../../utils/commandUtils";
 
 const serverinfo: GuildCommand = {
   name: "serverinfo",
@@ -9,32 +10,6 @@ const serverinfo: GuildCommand = {
     guildOnly: true,
   },
   async execute(ctx) {
-    function formatDate(date: Date): string {
-      const formatter = new Intl.DateTimeFormat("en-GB", {
-        timeZone: "UTC",
-        hour: "numeric",
-        minute: "2-digit",
-        hour12: true,
-        day: "numeric",
-        month: "long",
-        year: "numeric",
-      });
-
-      const parts = Object.fromEntries(
-        formatter.formatToParts(date).map((p) => [p.type, p.value])
-      );
-
-      const day = Number(parts.day);
-
-      const suffix =
-        day > 3 && day < 21
-          ? "th"
-          : ["th", "st", "nd", "rd"][Math.min(day % 10, 3)];
-
-      const unix = Math.floor(date.getTime() / 1000);
-      return `${day}${suffix} ${parts.month} ${parts.year}, ${parts.hour}:${parts.minute} ${parts.dayPeriod.toUpperCase()} (<t:${unix}:R>)`;
-    }
-
     const verificationLabels: Record<GuildVerificationLevel, string> = {
       [GuildVerificationLevel.None]: "None",
       [GuildVerificationLevel.Low]: "Low",

@@ -5,7 +5,8 @@
       "Bash(mkdir *)",
       "Bash(rm *)",
       "Bash(find *)",
-      "Bash(sleep *)"
+      "Bash(sleep *)",
+      "Bash(npx *)"
     ]
   },
   "$version": 3

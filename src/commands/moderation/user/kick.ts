@@ -1,6 +1,7 @@
 import { ApplicationCommandOptionType } from "discord.js";
 import { GuildCommand } from "../../../types";
 import { createErrorEmbed, createInfoEmbed } from "../../../utils/embedBuilder";
+import { dmUser, assertBotPermission, executeModerationAction } from "../../../utils/moderationHelpers";
 
 const kick: GuildCommand = {
   name: "kick",
@@ -43,45 +44,27 @@ const kick: GuildCommand = {
 
     await ctx.defer();
 
-    if (!targetMember.kickable) {
-      await ctx.reply({
-        embeds: [
-          createErrorEmbed(
-            ctx,
-            "I do not have permission to kick this user.",
-            "Check my roles and permissions."
-          ),
-        ],
-      });
+    if (!(await assertBotPermission(ctx, targetMember, "kick"))) {
       return;
     }
 
-    try {
-      const dmEmbed = createInfoEmbed(
-        ctx,
-        `You have been kicked from **${ctx.guild.name}**.`,
-        `Reason: ${reason}`
-      ).setColor("Red");
-      await targetMember.send({ embeds: [dmEmbed] }).catch(() => null);
+    await dmUser(targetMember.user, ctx.guild.name, "kicked", reason, ctx);
 
-      await targetMember.kick(reason);
+    const success = await executeModerationAction(
+      ctx,
+      async () => {
+        await targetMember.kick(reason);
+      },
+      "kick"
+    );
+
+    if (success) {
       await ctx.reply({
         embeds: [
           createInfoEmbed(
             ctx,
             `Successfully kicked **${targetMember.user.tag}**.`,
             `Reason: ${reason}`
-          ),
-        ],
-      });
-    } catch (error) {
-      console.error(error);
-      await ctx.reply({
-        embeds: [
-          createErrorEmbed(
-            ctx,
-            "Kick Failed",
-            "An error occurred while trying to kick the user."
           ),
         ],
       });

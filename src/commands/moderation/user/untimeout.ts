@@ -1,6 +1,7 @@
 import { ApplicationCommandOptionType } from "discord.js";
 import { GuildCommand } from "../../../types";
 import { createErrorEmbed, createInfoEmbed } from "../../../utils/embedBuilder";
+import { resolveTargetMember, assertBotPermission, executeModerationAction } from "../../../utils/moderationHelpers";
 
 const untimeout: GuildCommand = {
   name: "untimeout",
@@ -25,21 +26,10 @@ const untimeout: GuildCommand = {
     },
   ],
   async execute(ctx) {
-    const targetMember = await ctx.parseMember("target", 0);
-    const reason = ctx.parseString("reason", 1, true) || "No reason provided.";
+    const targetMember = await resolveTargetMember(ctx, "target", 0);
+    if (!targetMember) return;
 
-    if (!targetMember) {
-      await ctx.reply({
-        embeds: [
-          createErrorEmbed(
-            ctx,
-            "Please specify a valid user.",
-            "Could not find that user in the server."
-          ),
-        ],
-      });
-      return;
-    }
+    const reason = ctx.parseString("reason", 1, true) || "No reason provided.";
 
     await ctx.defer();
 
@@ -56,38 +46,25 @@ const untimeout: GuildCommand = {
       return;
     }
 
-    if (!targetMember.moderatable) {
-      await ctx.reply({
-        embeds: [
-          createErrorEmbed(
-            ctx,
-            "Permission Denied",
-            "I do not have permission to untimeout this user."
-          ),
-        ],
-      });
+    if (!(await assertBotPermission(ctx, targetMember, "timeout"))) {
       return;
     }
 
-    try {
-      await targetMember.timeout(null, reason);
+    const success = await executeModerationAction(
+      ctx,
+      async () => {
+        await targetMember.timeout(null, reason);
+      },
+      "untimeout"
+    );
+
+    if (success) {
       await ctx.reply({
         embeds: [
           createInfoEmbed(
             ctx,
             `Successfully removed timeout from <@${targetMember.user.id}>.`,
             `Reason: ${reason}`
-          ),
-        ],
-      });
-    } catch (error) {
-      console.error(error);
-      await ctx.reply({
-        embeds: [
-          createErrorEmbed(
-            ctx,
-            "Untimeout Failed",
-            "An error occurred while trying to untimeout the user."
           ),
         ],
       });

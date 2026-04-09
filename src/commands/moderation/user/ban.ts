@@ -1,6 +1,7 @@
 import { ApplicationCommandOptionType } from "discord.js";
 import { GuildCommand } from "../../../types";
 import { createErrorEmbed, createInfoEmbed } from "../../../utils/embedBuilder";
+import { dmUser, assertBotPermission, executeModerationAction } from "../../../utils/moderationHelpers";
 
 const ban: GuildCommand = {
   name: "ban",
@@ -43,49 +44,30 @@ const ban: GuildCommand = {
 
     await ctx.defer();
 
-    try {
-      const member = await ctx.guild.members
-        .fetch(targetUser.id)
-        .catch(() => null);
-      if (member && !member.bannable) {
-        await ctx.reply({
-          embeds: [
-            createErrorEmbed(
-              ctx,
-              "I do not have permission to ban this user.",
-              "Check my roles and permissions."
-            ),
-          ],
-        });
-        return;
-      }
+    const member = await ctx.guild.members
+      .fetch(targetUser.id)
+      .catch(() => null);
+    if (member && !(await assertBotPermission(ctx, member, "ban"))) {
+      return;
+    }
 
-      const dmEmbed = createInfoEmbed(
-        ctx,
-        `You have been banned from **${ctx.guild.name}**.`,
-        `Reason: ${reason}`
-      ).setColor("Red");
-      await targetUser.send({ embeds: [dmEmbed] }).catch(() => null);
+    await dmUser(targetUser, ctx.guild.name, "banned", reason, ctx);
 
-      await ctx.guild.members.ban(targetUser.id, { reason });
-      const userDisplay = targetUser.tag;
+    const success = await executeModerationAction(
+      ctx,
+      async () => {
+        await ctx.guild.members.ban(targetUser.id, { reason });
+      },
+      "ban"
+    );
+
+    if (success) {
       await ctx.reply({
         embeds: [
           createInfoEmbed(
             ctx,
-            `Successfully banned **${userDisplay}**.`,
+            `Successfully banned **${targetUser.tag}**.`,
             `Reason: ${reason}`
-          ),
-        ],
-      });
-    } catch (error) {
-      console.error(error);
-      await ctx.reply({
-        embeds: [
-          createErrorEmbed(
-            ctx,
-            "Ban Failed",
-            "An error occurred while trying to ban the user."
           ),
         ],
       });

@@ -1,6 +1,7 @@
 import { ApplicationCommandOptionType } from "discord.js";
 import { GuildCommand } from "../../../types";
-import { createErrorEmbed, createInfoEmbed } from "../../../utils/embedBuilder";
+import { createInfoEmbed } from "../../../utils/embedBuilder";
+import { resolveTargetMember } from "../../../utils/moderationHelpers";
 import { warningsDB } from "./warn";
 
 const warnings: GuildCommand = {
@@ -19,20 +20,8 @@ const warnings: GuildCommand = {
     },
   ],
   async execute(ctx) {
-    const targetMember = await ctx.parseMember("target", 0);
-
-    if (!targetMember) {
-      await ctx.reply({
-        embeds: [
-          createErrorEmbed(
-            ctx,
-            "Please specify a valid user.",
-            "Could not find that user in the server."
-          ),
-        ],
-      });
-      return;
-    }
+    const targetMember = await resolveTargetMember(ctx, "target", 0);
+    if (!targetMember) return;
 
     const guildWarnings = warningsDB.get(ctx.guild.id);
     const userWarnings = guildWarnings?.get(targetMember.id) || [];

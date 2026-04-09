@@ -1,6 +1,8 @@
 import { ApplicationCommandOptionType } from "discord.js";
 import { GuildCommand } from "../../../types";
 import { createErrorEmbed, createInfoEmbed } from "../../../utils/embedBuilder";
+import { dmUser, resolveTargetMember } from "../../../utils/moderationHelpers";
+import { logger } from "../../../utils/logger";
 
 // A basic map to store user warnings in memory.
 // Structure: Map<guildId, Map<userId, { reason: string, date: Date }[]>>
@@ -32,22 +34,10 @@ const warn: GuildCommand = {
     },
   ],
   async execute(ctx) {
-    const targetMember = await ctx.parseMember("target", 0);
+    const targetMember = await resolveTargetMember(ctx, "target", 0);
+    if (!targetMember) return;
+
     const reason = ctx.parseString("reason", 1, true);
-
-    if (!targetMember) {
-      await ctx.reply({
-        embeds: [
-          createErrorEmbed(
-            ctx,
-            "Please specify a valid user.",
-            "Could not find that user in the server."
-          ),
-        ],
-      });
-      return;
-    }
-
     if (!reason) {
       await ctx.reply({
         embeds: [
@@ -78,13 +68,7 @@ const warn: GuildCommand = {
     userWarnings.push({ reason, date: new Date() });
 
     try {
-      const dmEmbed = createInfoEmbed(
-        ctx,
-        `You have been warned in **${ctx.guild.name}**.`,
-        `for: ${reason}`
-      ).setColor("Red");
-
-      await targetMember.send({ embeds: [dmEmbed] }).catch(() => null);
+      await dmUser(targetMember.user, ctx.guild.name, "warned", reason, ctx);
 
       await ctx.reply({
         embeds: [
@@ -96,7 +80,7 @@ const warn: GuildCommand = {
         ],
       });
     } catch (error) {
-      console.error(error);
+      logger.error("Error during warn action:", error);
       await ctx.reply({
         embeds: [
           createInfoEmbed(

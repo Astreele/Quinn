@@ -1,5 +1,6 @@
-import { ApplicationCommandOptionType, EmbedBuilder } from "discord.js";
+import { ApplicationCommandOptionType } from "discord.js";
 import { GuildCommand } from "../../types";
+import { createErrorEmbed, createInfoEmbed } from "../../utils/embedBuilder";
 
 const kick: GuildCommand = {
   name: "kick",
@@ -28,16 +29,16 @@ const kick: GuildCommand = {
     const targetMember = await ctx.parseMember("target", 0);
     const reason = ctx.parseString("reason", 1, true) || "No reason provided.";
 
-    const embed = new EmbedBuilder()
-      .setFooter({ text: `Requested by ${ctx.author.username}` })
-      .setTimestamp()
-      .setColor("Red");
-
     if (!targetMember) {
-      embed
-        .setTitle("Please specify a valid user.")
-        .setDescription("Could not find that user in the server.");
-      await ctx.reply({ embeds: [embed] });
+      await ctx.reply({
+        embeds: [
+          createErrorEmbed(
+            ctx,
+            "Please specify a valid user.",
+            "Could not find that user in the server."
+          ),
+        ],
+      });
       return;
     }
 
@@ -45,30 +46,48 @@ const kick: GuildCommand = {
 
     // Check if the bot can kick the user
     if (!targetMember.kickable) {
-      embed
-        .setTitle("I do not have permission to kick this user.")
-        .setDescription(" Check my roles and permissions.");
-      await ctx.reply({ embeds: [embed] });
+      await ctx.reply({
+        embeds: [
+          createErrorEmbed(
+            ctx,
+            "I do not have permission to kick this user.",
+            "Check my roles and permissions."
+          ),
+        ],
+      });
       return;
     }
 
     try {
-      embed
-        .setTitle(`You have been kicked from **${ctx.guild.name}**.`)
-        .setDescription(`Reason: ${reason}`);
+      const dmEmbed = createInfoEmbed(
+        ctx,
+        `You have been kicked from **${ctx.guild.name}**.`,
+        `Reason: ${reason}`
+      ).setColor("Red");
       // Attempt to DM the target user before kicking (if they allow DMs)
-      await targetMember.send({ embeds: [embed] }).catch(() => null);
+      await targetMember.send({ embeds: [dmEmbed] }).catch(() => null);
 
       await targetMember.kick(reason);
-      embed
-        .setTitle(`Successfully kicked **${targetMember.user.tag}**.`)
-        .setDescription(`Reason: ${reason}`)
-        .setColor("Yellow");
-      await ctx.reply({ embeds: [embed] });
+      await ctx.reply({
+        embeds: [
+          createInfoEmbed(
+            ctx,
+            `Successfully kicked **${targetMember.user.tag}**.`,
+            `Reason: ${reason}`
+          ),
+        ],
+      });
     } catch (error) {
       console.error(error);
-      embed.setDescription("An error occurred while trying to kick the user.");
-      await ctx.reply({ embeds: [embed] });
+      await ctx.reply({
+        embeds: [
+          createErrorEmbed(
+            ctx,
+            "Kick Failed",
+            "An error occurred while trying to kick the user."
+          ),
+        ],
+      });
     }
   },
 };

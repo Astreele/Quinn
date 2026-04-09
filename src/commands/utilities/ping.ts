@@ -1,5 +1,5 @@
 import { Command } from "../../types";
-import { EmbedBuilder } from "discord.js";
+import { createInfoEmbed } from "../../utils/embedBuilder";
 
 /**
  * A simple utility command that checks the bot's current response latency.
@@ -15,17 +15,9 @@ const ping: Command = {
    * @param ctx The abstraction containing the user's message/interaction.
    */
   async execute(ctx) {
-    const embed = new EmbedBuilder()
-      .setColor("Yellow")
-      .setTitle("Bot Ping")
-      .addFields({
-        name: "⚡ Latency",
-        value: "Pinging...",
-      })
-      // .setDescription(`Latency: Pinging...`)
-      .setThumbnail(ctx.client.user!.displayAvatarURL())
-      .setFooter({ text: `Requested by ${ctx.author.username}` })
-      .setTimestamp();
+    const embed = createInfoEmbed(ctx, "Bot Ping", "Pinging...").setThumbnail(
+      ctx.client.user!.displayAvatarURL()
+    );
 
     const sent = await ctx.reply({ embeds: [embed] });
 

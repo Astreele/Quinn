@@ -1,5 +1,6 @@
-import { ApplicationCommandOptionType, EmbedBuilder } from "discord.js";
+import { ApplicationCommandOptionType } from "discord.js";
 import { GuildCommand } from "../../types";
+import { createErrorEmbed, createInfoEmbed } from "../../utils/embedBuilder";
 
 const whoIs: GuildCommand = {
   name: "whois",
@@ -56,18 +57,19 @@ const whoIs: GuildCommand = {
 
       return `${visibleRoles} and ${remainingRoles} more`;
     }
-    const embed = new EmbedBuilder()
-      .setFooter({ text: `Requested by ${ctx.author.username}` })
-      .setTimestamp()
-      .setColor("Red");
 
     const targetMember = (await ctx.parseMember("user", 0)) ?? ctx.member;
 
     if (!targetMember) {
-      embed
-        .setTitle("Please specify a valid user.")
-        .setDescription("Could not find that user in the server.");
-      await ctx.reply({ embeds: [embed] });
+      await ctx.reply({
+        embeds: [
+          createErrorEmbed(
+            ctx,
+            "Please specify a valid user.",
+            "Could not find that user in the server."
+          ),
+        ],
+      });
       return;
     }
 
@@ -76,9 +78,7 @@ const whoIs: GuildCommand = {
       .sort((a, b) => b.position - a.position)
       .map((role) => role.toString());
 
-    embed
-      .setColor("Yellow")
-      .setTitle(`User Info: <@${targetMember.user.id}>`)
+    const embed = createInfoEmbed(ctx, `User Info: <@${targetMember.user.id}>`)
       .setThumbnail(
         targetMember.displayAvatarURL({ extension: "png", size: 1024 })
       )

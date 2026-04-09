@@ -1,5 +1,6 @@
-import { ApplicationCommandOptionType, EmbedBuilder } from "discord.js";
+import { ApplicationCommandOptionType } from "discord.js";
 import { GuildCommand } from "../../types";
+import { createErrorEmbed, createInfoEmbed } from "../../utils/embedBuilder";
 
 // A basic map to store user warnings in memory.
 // Structure: Map<guildId, Map<userId, { reason: string, date: Date }[]>>
@@ -35,31 +36,32 @@ const warn: GuildCommand = {
     const targetMember = await ctx.parseMember("target", 0);
     const reason = ctx.parseString("reason", 1, true);
 
-    const embed = new EmbedBuilder()
-      .setFooter({ text: `Requested by ${ctx.author.username}` })
-      .setTimestamp()
-      .setColor("Red");
-
     if (!targetMember) {
-      embed
-        .setTitle("Please specify a valid user.")
-        .setDescription("Could not find that user in the server.");
-
-      await ctx.reply({ embeds: [embed] });
+      await ctx.reply({
+        embeds: [
+          createErrorEmbed(
+            ctx,
+            "Please specify a valid user.",
+            "Could not find that user in the server."
+          ),
+        ],
+      });
       return;
     }
 
     if (!reason) {
-      embed.setDescription("Please specify a reason.");
-
-      await ctx.reply({ embeds: [embed] });
+      await ctx.reply({
+        embeds: [
+          createErrorEmbed(ctx, "Missing Reason", "Please specify a reason."),
+        ],
+      });
       return;
     }
 
     if (targetMember.user.bot) {
-      embed.setDescription("You cannot warn a bot.");
-
-      await ctx.reply({ embeds: [embed] });
+      await ctx.reply({
+        embeds: [createErrorEmbed(ctx, "Invalid Target", "You cannot warn a bot.")],
+      });
       return;
     }
 
@@ -78,25 +80,34 @@ const warn: GuildCommand = {
 
     try {
       // Attempt to DM the user
-      embed
-        .setTitle(`You have been warned in **${ctx.guild.name}**.`)
-        .setDescription(`for: ${reason}`);
+      const dmEmbed = createInfoEmbed(
+        ctx,
+        `You have been warned in **${ctx.guild.name}**.`,
+        `for: ${reason}`
+      ).setColor("Red");
 
-      await targetMember.send({ embeds: [embed] }).catch(() => null);
+      await targetMember.send({ embeds: [dmEmbed] }).catch(() => null);
 
-      embed
-        .setTitle(`Successfully warned <@${targetMember.user.id}>.`)
-        .setDescription(`This user now has ${userWarnings.length} warning(s).`)
-        .setColor("Yellow");
-
-      await ctx.reply({ embeds: [embed] });
+      await ctx.reply({
+        embeds: [
+          createInfoEmbed(
+            ctx,
+            `Successfully warned <@${targetMember.user.id}>.`,
+            `This user now has ${userWarnings.length} warning(s).`
+          ),
+        ],
+      });
     } catch (error) {
       console.error(error);
-      embed
-        .setTitle(`Warning recorded for <@${targetMember.user.id}>`)
-        .setDescription(`but I could not DM them.`);
-
-      await ctx.reply({ embeds: [embed] });
+      await ctx.reply({
+        embeds: [
+          createInfoEmbed(
+            ctx,
+            `Warning recorded for <@${targetMember.user.id}>`,
+            "but I could not DM them."
+          ),
+        ],
+      });
     }
   },
 };

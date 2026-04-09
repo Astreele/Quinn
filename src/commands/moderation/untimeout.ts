@@ -1,5 +1,6 @@
-import { ApplicationCommandOptionType, EmbedBuilder } from "discord.js";
+import { ApplicationCommandOptionType } from "discord.js";
 import { GuildCommand } from "../../types";
+import { createErrorEmbed, createInfoEmbed } from "../../utils/embedBuilder";
 
 const untimeout: GuildCommand = {
   name: "untimeout",
@@ -28,48 +29,69 @@ const untimeout: GuildCommand = {
     const targetMember = await ctx.parseMember("target", 0);
     const reason = ctx.parseString("reason", 1, true) || "No reason provided.";
 
-    const embed = new EmbedBuilder()
-      .setFooter({ text: `Requested by ${ctx.author.username}` })
-      .setTimestamp()
-      .setColor("Red");
-
     if (!targetMember) {
-      embed
-        .setTitle("Please specify a valid user.")
-        .setDescription("Could not find that user in the server.");
-      await ctx.reply({ embeds: [embed] });
+      await ctx.reply({
+        embeds: [
+          createErrorEmbed(
+            ctx,
+            "Please specify a valid user.",
+            "Could not find that user in the server."
+          ),
+        ],
+      });
       return;
     }
 
     await ctx.defer();
 
     if (!targetMember.isCommunicationDisabled()) {
-      embed.setDescription("That user is not currently timed out.");
-      await ctx.reply({ embeds: [embed] });
+      await ctx.reply({
+        embeds: [
+          createErrorEmbed(
+            ctx,
+            "Not Timed Out",
+            "That user is not currently timed out."
+          ),
+        ],
+      });
       return;
     }
 
     if (!targetMember.moderatable) {
-      embed.setDescription("I do not have permission to untimeout this user.");
-      await ctx.reply({ embeds: [embed] });
+      await ctx.reply({
+        embeds: [
+          createErrorEmbed(
+            ctx,
+            "Permission Denied",
+            "I do not have permission to untimeout this user."
+          ),
+        ],
+      });
       return;
     }
 
     try {
       await targetMember.timeout(null, reason);
-      embed
-        .setTitle(
-          `Successfully removed timeout from <@${targetMember.user.id}>.`
-        )
-        .setDescription(`Reason: ${reason}`)
-        .setColor("Yellow");
-      await ctx.reply({ embeds: [embed] });
+      await ctx.reply({
+        embeds: [
+          createInfoEmbed(
+            ctx,
+            `Successfully removed timeout from <@${targetMember.user.id}>.`,
+            `Reason: ${reason}`
+          ),
+        ],
+      });
     } catch (error) {
       console.error(error);
-      embed.setDescription(
-        "An error occurred while trying to untimeout the user."
-      );
-      await ctx.reply({ embeds: [embed] });
+      await ctx.reply({
+        embeds: [
+          createErrorEmbed(
+            ctx,
+            "Untimeout Failed",
+            "An error occurred while trying to untimeout the user."
+          ),
+        ],
+      });
     }
   },
 };

@@ -1,9 +1,9 @@
 import {
   ApplicationCommandOptionType,
   PermissionFlagsBits,
-  EmbedBuilder,
 } from "discord.js";
 import { GuildCommand } from "../../types";
+import { createErrorEmbed, createInfoEmbed } from "../../utils/embedBuilder";
 
 const lock: GuildCommand = {
   name: "lock",
@@ -42,16 +42,14 @@ const lock: GuildCommand = {
         ctx.parseString("reason", 1, true);
     }
 
-    const embed = new EmbedBuilder()
-      .setFooter({ text: `Requested by ${ctx.author.username}` })
-      .setTimestamp()
-      .setColor("Red");
-
     reason = reason || "No reason provided.";
 
     if (!targetChannel || !("permissionOverwrites" in targetChannel)) {
-      embed.setDescription("Could not lock this this channel.");
-      await ctx.reply({ embeds: [embed] });
+      await ctx.reply({
+        embeds: [
+          createErrorEmbed(ctx, "Lock Failed", "Could not lock this channel."),
+        ],
+      });
       return;
     }
 
@@ -59,13 +57,12 @@ const lock: GuildCommand = {
       ctx.guild.id
     );
     if (overwrite && overwrite.deny.has(PermissionFlagsBits.SendMessages)) {
-      if (targetChannel.id === ctx.channel?.id) {
-        embed.setDescription("This channel is already locked.");
-        await ctx.reply({ embeds: [embed] });
-      } else {
-        embed.setDescription(`<#${targetChannel.id}> is already locked.`);
-        await ctx.reply({ embeds: [embed] });
-      }
+      const location = targetChannel.id === ctx.channel?.id ? "This" : `<#${targetChannel.id}>`;
+      await ctx.reply({
+        embeds: [
+          createErrorEmbed(ctx, "Already Locked", `${location} channel is already locked.`),
+        ],
+      });
       return;
     }
 
@@ -80,25 +77,27 @@ const lock: GuildCommand = {
         { reason }
       );
 
-      if (targetChannel.id !== ctx.channel?.id) {
-        embed
-          .setTitle(`Successfully locked <#${targetChannel.id}>.`)
-          .setDescription(`Reason: ${reason}`)
-          .setColor("Yellow");
-        await ctx.reply({ embeds: [embed] });
-      } else {
-        embed
-          .setTitle("🔒 This channel has been locked.")
-          .setDescription(`Reason: ${reason}`)
-          .setColor("Yellow");
-        await ctx.reply({ embeds: [embed] });
-      }
+      const location = targetChannel.id !== ctx.channel?.id ? `<#${targetChannel.id}>` : "🔒 This";
+      await ctx.reply({
+        embeds: [
+          createInfoEmbed(
+            ctx,
+            `${location} channel has been locked.`,
+            `Reason: ${reason}`
+          ),
+        ],
+      });
     } catch (error) {
       console.error(error);
-      embed
-        .setTitle("An error occurred while trying to lock the channel.")
-        .setDescription("Check my permissions.");
-      await ctx.reply({ embeds: [embed] });
+      await ctx.reply({
+        embeds: [
+          createErrorEmbed(
+            ctx,
+            "Lock Failed",
+            "An error occurred while trying to lock the channel. Check my permissions."
+          ),
+        ],
+      });
     }
   },
 };

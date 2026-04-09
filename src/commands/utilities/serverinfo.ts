@@ -1,5 +1,6 @@
-import { ChannelType, EmbedBuilder, GuildVerificationLevel } from "discord.js";
+import { ChannelType, GuildVerificationLevel } from "discord.js";
 import { GuildCommand } from "../../types";
+import { createInfoEmbed } from "../../utils/embedBuilder";
 
 const serverinfo: GuildCommand = {
   name: "serverinfo",
@@ -57,9 +58,7 @@ const serverinfo: GuildCommand = {
       )
     ).size;
 
-    const embed = new EmbedBuilder()
-      .setColor("Yellow")
-      .setTitle(ctx.guild.name)
+    const embed = createInfoEmbed(ctx, ctx.guild.name)
       .setThumbnail(ctx.guild.iconURL({ extension: "png", size: 1024 }))
       .addFields(
         {
@@ -107,9 +106,7 @@ const serverinfo: GuildCommand = {
           value: verificationLabels[ctx.guild.verificationLevel],
           inline: true,
         }
-      )
-      .setFooter({ text: `Requested by ${ctx.author.username}` })
-      .setTimestamp();
+      );
 
     await ctx.reply({ embeds: [embed] });
   },

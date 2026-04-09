@@ -1,5 +1,6 @@
-import { ApplicationCommandOptionType, EmbedBuilder } from "discord.js";
+import { ApplicationCommandOptionType } from "discord.js";
 import { GuildCommand } from "../../types";
+import { createErrorEmbed, createInfoEmbed } from "../../utils/embedBuilder";
 
 const ban: GuildCommand = {
   name: "ban",
@@ -28,16 +29,16 @@ const ban: GuildCommand = {
     const targetUser = await ctx.parseUser("target", 0);
     const reason = ctx.parseString("reason", 1, true) || "No reason provided.";
 
-    const embed = new EmbedBuilder()
-      .setFooter({ text: `Requested by ${ctx.author.username}` })
-      .setTimestamp()
-      .setColor("Red");
-
     if (!targetUser) {
-      embed
-        .setTitle("Please specify a valid user.")
-        .setDescription("Could not identify the user to ban.");
-      await ctx.reply({ embeds: [embed] });
+      await ctx.reply({
+        embeds: [
+          createErrorEmbed(
+            ctx,
+            "Please specify a valid user.",
+            "Could not identify the user to ban."
+          ),
+        ],
+      });
       return;
     }
 
@@ -49,30 +50,48 @@ const ban: GuildCommand = {
         .fetch(targetUser.id)
         .catch(() => null);
       if (member && !member.bannable) {
-        embed
-          .setTitle("I do not have permission to kick this user.")
-          .setDescription(" Check my roles and permissions.");
-        await ctx.reply({ embeds: [embed] });
+        await ctx.reply({
+          embeds: [
+            createErrorEmbed(
+              ctx,
+              "I do not have permission to ban this user.",
+              "Check my roles and permissions."
+            ),
+          ],
+        });
         return;
       }
 
-      embed
-        .setTitle(`You have been banned from **${ctx.guild.name}**.`)
-        .setDescription(`Reason: ${reason}`);
-      // Attempt to DM the target user before baning (if they allow DMs)
-      await targetUser.send({ embeds: [embed] }).catch(() => null);
+      const dmEmbed = createInfoEmbed(
+        ctx,
+        `You have been banned from **${ctx.guild.name}**.`,
+        `Reason: ${reason}`
+      ).setColor("Red");
+      // Attempt to DM the target user before banning (if they allow DMs)
+      await targetUser.send({ embeds: [dmEmbed] }).catch(() => null);
 
       await ctx.guild.members.ban(targetUser.id, { reason });
       const userDisplay = targetUser.tag;
-      embed
-        .setTitle(`Successfully banned **${userDisplay}**.`)
-        .setDescription(`Reason: ${reason}`)
-        .setColor("Yellow");
-      await ctx.reply({ embeds: [embed] });
+      await ctx.reply({
+        embeds: [
+          createInfoEmbed(
+            ctx,
+            `Successfully banned **${userDisplay}**.`,
+            `Reason: ${reason}`
+          ),
+        ],
+      });
     } catch (error) {
       console.error(error);
-      embed.setDescription("An error occurred while trying to ban the user.");
-      await ctx.reply({ embeds: [embed] });
+      await ctx.reply({
+        embeds: [
+          createErrorEmbed(
+            ctx,
+            "Ban Failed",
+            "An error occurred while trying to ban the user."
+          ),
+        ],
+      });
     }
   },
 };

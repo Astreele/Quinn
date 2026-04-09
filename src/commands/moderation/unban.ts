@@ -1,5 +1,6 @@
-import { ApplicationCommandOptionType, EmbedBuilder } from "discord.js";
+import { ApplicationCommandOptionType } from "discord.js";
 import { GuildCommand } from "../../types";
+import { createErrorEmbed, createInfoEmbed } from "../../utils/embedBuilder";
 
 const unban: GuildCommand = {
   name: "unban",
@@ -27,14 +28,16 @@ const unban: GuildCommand = {
     const targetId = ctx.parseString("userid", 0);
     const reason = ctx.parseString("reason", 1, true) || "No reason provided.";
 
-    const embed = new EmbedBuilder()
-      .setFooter({ text: `Requested by ${ctx.author.username}` })
-      .setTimestamp()
-      .setColor("Red");
-
     if (!targetId) {
-      embed.setDescription("Please specify a valid user ID to unban.");
-      await ctx.reply({ embeds: [embed] });
+      await ctx.reply({
+        embeds: [
+          createErrorEmbed(
+            ctx,
+            "Missing User ID",
+            "Please specify a valid user ID to unban."
+          ),
+        ],
+      });
       return;
     }
 
@@ -45,23 +48,35 @@ const unban: GuildCommand = {
       // Attempt to fetch the specific ban rather than the entire guild's ban list
       const ban = await ctx.guild.bans.fetch(targetId).catch(() => null);
       if (!ban) {
-        embed.setDescription("That user is not currently banned.");
-        await ctx.reply({ embeds: [embed] });
+        await ctx.reply({
+          embeds: [
+            createErrorEmbed(ctx, "User Not Banned", "That user is not currently banned."),
+          ],
+        });
         return;
       }
 
       await ctx.guild.members.unban(targetId, reason);
-      embed
-        .setTitle(`Successfully unbanned user with ID ${targetId}.`)
-        .setDescription(` Reason: ${reason}`)
-        .setColor("Yellow");
-      await ctx.reply({ embeds: [embed] });
+      await ctx.reply({
+        embeds: [
+          createInfoEmbed(
+            ctx,
+            `Successfully unbanned user with ID ${targetId}.`,
+            `Reason: ${reason}`
+          ),
+        ],
+      });
     } catch (error) {
       console.error(error);
-      embed
-        .setTitle("An error occurred while trying to unban the user.")
-        .setDescription("Ensure I have the permisson.");
-      await ctx.reply({ embeds: [embed] });
+      await ctx.reply({
+        embeds: [
+          createErrorEmbed(
+            ctx,
+            "Unban Failed",
+            "An error occurred while trying to unban the user. Ensure I have the permission."
+          ),
+        ],
+      });
     }
   },
 };

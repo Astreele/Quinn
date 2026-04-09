@@ -25,7 +25,7 @@ const event: BotEvent<"messageCreate"> = {
       message,
       resolved.args,
       resolved.rootCommand.name,
-      resolved.subcommandName
+      resolved.subcommandPath
     );
     await executeWithValidation(client, resolved.command, ctx);
   },

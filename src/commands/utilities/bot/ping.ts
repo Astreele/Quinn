@@ -1,5 +1,5 @@
-import { Command } from "../../types";
-import { createInfoEmbed } from "../../utils/embedBuilder";
+import { Command } from "../../../types";
+import { createInfoEmbed } from "../../../utils/embedBuilder";
 
 /**
  * A simple utility command that checks the bot's current response latency.
@@ -8,7 +8,6 @@ import { createInfoEmbed } from "../../utils/embedBuilder";
 const ping: Command = {
   name: "ping",
   description: "Check bot latency",
-  category: "utility",
 
   /**
    * Executes the ping command, measuring the round-trip time.

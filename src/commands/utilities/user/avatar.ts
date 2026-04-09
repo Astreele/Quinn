@@ -1,6 +1,6 @@
 import { ApplicationCommandOptionType } from "discord.js";
-import { Command } from "../../types";
-import { createInfoEmbed } from "../../utils/embedBuilder";
+import { Command } from "../../../types";
+import { createInfoEmbed } from "../../../utils/embedBuilder";
 
 const avatar: Command = {
   name: "avatar",

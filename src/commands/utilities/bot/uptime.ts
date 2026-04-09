@@ -1,5 +1,5 @@
-import { Command } from "../../types";
-import { createInfoEmbed } from "../../utils/embedBuilder";
+import { Command } from "../../../types";
+import { createInfoEmbed } from "../../../utils/embedBuilder";
 
 const Uptime: Command = {
   name: "uptime",

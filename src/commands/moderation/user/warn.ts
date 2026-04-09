@@ -1,6 +1,6 @@
 import { ApplicationCommandOptionType } from "discord.js";
-import { GuildCommand } from "../../types";
-import { createErrorEmbed, createInfoEmbed } from "../../utils/embedBuilder";
+import { GuildCommand } from "../../../types";
+import { createErrorEmbed, createInfoEmbed } from "../../../utils/embedBuilder";
 
 // A basic map to store user warnings in memory.
 // Structure: Map<guildId, Map<userId, { reason: string, date: Date }[]>>
@@ -12,7 +12,6 @@ export const warningsDB: Map<
 const warn: GuildCommand = {
   name: "warn",
   description: "Issues a formal warning to a user.",
-  category: "moderation",
   conf: {
     modOnly: true,
     requireHierarchy: true,
@@ -79,7 +78,6 @@ const warn: GuildCommand = {
     userWarnings.push({ reason, date: new Date() });
 
     try {
-      // Attempt to DM the user
       const dmEmbed = createInfoEmbed(
         ctx,
         `You have been warned in **${ctx.guild.name}**.`,

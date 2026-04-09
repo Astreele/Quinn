@@ -1,11 +1,10 @@
 import { ApplicationCommandOptionType } from "discord.js";
-import { GuildCommand } from "../../types";
-import { createErrorEmbed, createInfoEmbed } from "../../utils/embedBuilder";
+import { GuildCommand } from "../../../types";
+import { createErrorEmbed, createInfoEmbed } from "../../../utils/embedBuilder";
 
 const ban: GuildCommand = {
   name: "ban",
   description: "Bans a specified user from the server.",
-  category: "moderation",
   conf: {
     modOnly: true,
     requireHierarchy: true,
@@ -45,7 +44,6 @@ const ban: GuildCommand = {
     await ctx.defer();
 
     try {
-      // Attempt to fetch member to check hierarchy if they are in the server
       const member = await ctx.guild.members
         .fetch(targetUser.id)
         .catch(() => null);
@@ -67,7 +65,6 @@ const ban: GuildCommand = {
         `You have been banned from **${ctx.guild.name}**.`,
         `Reason: ${reason}`
       ).setColor("Red");
-      // Attempt to DM the target user before banning (if they allow DMs)
       await targetUser.send({ embeds: [dmEmbed] }).catch(() => null);
 
       await ctx.guild.members.ban(targetUser.id, { reason });

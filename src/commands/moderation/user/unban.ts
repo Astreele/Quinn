@@ -1,11 +1,10 @@
 import { ApplicationCommandOptionType } from "discord.js";
-import { GuildCommand } from "../../types";
-import { createErrorEmbed, createInfoEmbed } from "../../utils/embedBuilder";
+import { GuildCommand } from "../../../types";
+import { createErrorEmbed, createInfoEmbed } from "../../../utils/embedBuilder";
 
 const unban: GuildCommand = {
   name: "unban",
   description: "Revokes a ban on a user.",
-  category: "moderation",
   conf: {
     modOnly: true,
     guildOnly: true,
@@ -41,11 +40,9 @@ const unban: GuildCommand = {
       return;
     }
 
-    // Defer here because fetching bans can take longer than 3 seconds on large servers
     await ctx.defer();
 
     try {
-      // Attempt to fetch the specific ban rather than the entire guild's ban list
       const ban = await ctx.guild.bans.fetch(targetId).catch(() => null);
       if (!ban) {
         await ctx.reply({

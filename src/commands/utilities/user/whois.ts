@@ -1,6 +1,6 @@
 import { ApplicationCommandOptionType } from "discord.js";
-import { GuildCommand } from "../../types";
-import { createErrorEmbed, createInfoEmbed } from "../../utils/embedBuilder";
+import { GuildCommand } from "../../../types";
+import { createErrorEmbed, createInfoEmbed } from "../../../utils/embedBuilder";
 
 const whoIs: GuildCommand = {
   name: "whois",

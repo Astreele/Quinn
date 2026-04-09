@@ -1,12 +1,11 @@
 import { ApplicationCommandOptionType } from "discord.js";
-import { GuildCommand } from "../../types";
-import { createErrorEmbed, createInfoEmbed } from "../../utils/embedBuilder";
+import { GuildCommand } from "../../../types";
+import { createErrorEmbed, createInfoEmbed } from "../../../utils/embedBuilder";
 
 const timeout: GuildCommand = {
   name: "timeout",
   description:
     "Temporarily stops a user from sending messages or joining voice channels.",
-  category: "moderation",
   conf: {
     modOnly: true,
     requireHierarchy: true,
@@ -65,7 +64,6 @@ const timeout: GuildCommand = {
       return;
     }
 
-    // Limit to discord max timeout (28 days)
     const maxMinutes = 28 * 24 * 60;
     if (durationMinutes > maxMinutes) {
       await ctx.reply({

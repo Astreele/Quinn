@@ -43,24 +43,9 @@ export interface CommandOption {
   required?: boolean;
 }
 
-export interface Subcommand {
-  /** The subcommand name used under the parent command. */
-  name: string;
-  /** A brief description of the subcommand. Required for slash commands. */
-  description: string;
-  /** Arguments accepted by the subcommand. */
-  options?: CommandOption[];
-  /** Optional execution constraints and rules. */
-  conf?: CommandConfig;
-  /**
-   * The core execution logic of the subcommand.
-   * @param ctx The abstracted Context wrapper detailing the invocation.
-   */
-  execute: (ctx: Context) => Promise<void>;
-}
-
 /**
  * Represents a unified bot command that can be executed via slash interactions or message prefixes.
+ * Supports file-based subcommand resolution with unlimited nesting depth.
  */
 export interface Command {
   /** The name of the command. Acts as the slash command name and prefix trigger. */
@@ -71,17 +56,21 @@ export interface Command {
   category?: string;
   /** Arguments or parameters the command accepts. Directly maps to Discord ApplicationCommandOptions. */
   options?: CommandOption[];
-  /** Optional slash/prefix subcommands that live under this command. */
-  subcommands?: Subcommand[];
-  /** Optional prefix-only fallback subcommand used when no subcommand token is provided. */
-  defaultSubcommand?: string;
   /** Optional execution constraints and rules. */
   conf?: CommandConfig;
   /**
    * The core execution logic of the command.
+   * For command groups (folders), this executes when no subcommand is specified.
    * @param ctx The abstracted Context wrapper detailing the invocation.
    */
   execute?: (ctx: Context) => Promise<void>;
+
+  // ===== Internal tree structure (auto-populated by loader, not manually set) =====
+
+  /** Child commands/subcommand groups for tree-based resolution. */
+  _children?: Map<string, Command>;
+  /** Whether this command is a group (represents a folder with children). */
+  _isGroup?: boolean;
 }
 
 /**

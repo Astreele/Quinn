@@ -29,7 +29,7 @@ const event: BotEvent<"interactionCreate"> = {
       interaction,
       resolved.args,
       resolved.rootCommand.name,
-      resolved.subcommandName
+      resolved.subcommandPath
     );
     await executeWithValidation(client, resolved.command, ctx);
   },

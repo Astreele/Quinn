@@ -1,5 +1,5 @@
-import { Command } from "../../types";
-import { createInfoEmbed } from "../../utils/embedBuilder";
+import { Command } from "../../../types";
+import { createInfoEmbed } from "../../../utils/embedBuilder";
 import process from "process";
 import os from "os";
 import pidusage from "pidusage";
@@ -8,7 +8,6 @@ import { version as djsVersion } from "discord.js";
 const stats: Command = {
   name: "stats",
   description: "Shows the bot's uptime, memory usage, and version details.",
-  category: "utility",
 
   async execute(ctx) {
     const client = ctx.client;

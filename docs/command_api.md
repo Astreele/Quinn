@@ -4,7 +4,9 @@ This guide explains how to build commands for the Quinn bot using the defined Ty
 
 ## Structure of a Command
 
-A command is defined as an object that adheres to the `Command` interface exported in `src/types.ts`. To create a new command, simply create a new `.ts` file inside a category subdirectory within `src/commands` (e.g., `src/commands/utilities/ping.ts`).
+A command is defined as an object that adheres to the `Command` interface exported in `src/types.ts`. To create a new command, simply create a new `.ts` file inside any category subdirectory within `src/commands` (e.g., `src/commands/utilities/ping.ts`).
+
+**Note:** Category folders (`admin/`, `moderation/`, `fun/`, `utilities/`) are transparent — they are ONLY for developer organization and are **NOT part of the command path**. All categories merge into one flat command namespace.
 
 The command struct must be the `default` export of the file.
 
@@ -20,6 +22,58 @@ The command struct must be the `default` export of the file.
 - `options` (`Array`): An array of `ApplicationCommandOption` structs utilized heavily to register Discord Slash Command options.
   - Represents arguments that can be passed to the command (e.g., `user`, `reason`).
 - `conf` (`CommandConfig`): A configuration object applying constraints, validations, and behavioral rules to the command.
+
+## Command Groups and Subcommands
+
+The command system uses a **file-based structure** where folders become command groups and files become subcommands. Categories are transparent — all commands from all categories merge into one flat namespace.
+
+### Simple Command (No Subcommands)
+
+```
+src/commands/utilities/ping.ts    → /ping
+src/commands/fun/roll.ts          → /roll
+```
+
+### Command Group with Subcommands
+
+Create a folder inside any category, and add files inside:
+
+```
+src/commands/moderation/channel/
+  lock.ts       → /channel lock
+  unlock.ts     → /channel unlock
+src/commands/utilities/bot/
+  ping.ts       → /bot ping
+  stats.ts      → /bot stats
+```
+
+### Cross-Category Group Merging
+
+If the same group folder name exists in multiple categories, they merge into a single group:
+
+```
+src/commands/utilities/user/avatar.ts   → /user avatar
+src/commands/moderation/user/ban.ts     → /user ban
+```
+Both become subcommands of `/user`. Subcommand names must be unique across categories within the same group.
+
+**Important:** When a command has subcommands (is a group), you must always specify a subcommand. The command group itself cannot be executed directly.
+
+### Structure Constraints
+
+The command loader enforces Discord API constraints at build time:
+
+1. **Maximum 2 levels of nesting** (within a group)
+   - `/command` → `/command subcommand` → `/command group subcommand`
+
+2. **No mixing files and folders at the same level** (within a group)
+   - A command group must be EITHER all files (flat) OR all folders (grouped)
+   - Cannot mix both in the same directory
+
+3. **Root level allows flat + groups**
+   - Flat commands and groups can coexist at the root level since categories are transparent
+
+For detailed constraints and examples, see [Command Structures Constraints](./command-structure-constraints.md).
 
 ## `CommandConfig` Options
 

@@ -1,7 +1,12 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npm run *)"
+      "Bash(npm run *)",
+      "Bash(mkdir *)",
+      "Bash(rm *)",
+      "Bash(find *)",
+      "Bash(sleep *)"
     ]
-  }
+  },
+  "$version": 3
 }

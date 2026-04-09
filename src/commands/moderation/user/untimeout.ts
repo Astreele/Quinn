@@ -1,11 +1,10 @@
 import { ApplicationCommandOptionType } from "discord.js";
-import { GuildCommand } from "../../types";
-import { createErrorEmbed, createInfoEmbed } from "../../utils/embedBuilder";
+import { GuildCommand } from "../../../types";
+import { createErrorEmbed, createInfoEmbed } from "../../../utils/embedBuilder";
 
-const kick: GuildCommand = {
-  name: "kick",
-  description: "Kicks a specified user from the server.",
-  category: "moderation",
+const untimeout: GuildCommand = {
+  name: "untimeout",
+  description: "Removes a timeout from a user.",
   conf: {
     modOnly: true,
     requireHierarchy: true,
@@ -14,13 +13,13 @@ const kick: GuildCommand = {
   options: [
     {
       name: "target",
-      description: "The user to kick",
+      description: "The user to untimeout",
       type: ApplicationCommandOptionType.User,
       required: true,
     },
     {
       name: "reason",
-      description: "The reason for kicking the user",
+      description: "The reason for removing the timeout",
       type: ApplicationCommandOptionType.String,
       required: false,
     },
@@ -44,14 +43,26 @@ const kick: GuildCommand = {
 
     await ctx.defer();
 
-    // Check if the bot can kick the user
-    if (!targetMember.kickable) {
+    if (!targetMember.isCommunicationDisabled()) {
       await ctx.reply({
         embeds: [
           createErrorEmbed(
             ctx,
-            "I do not have permission to kick this user.",
-            "Check my roles and permissions."
+            "Not Timed Out",
+            "That user is not currently timed out."
+          ),
+        ],
+      });
+      return;
+    }
+
+    if (!targetMember.moderatable) {
+      await ctx.reply({
+        embeds: [
+          createErrorEmbed(
+            ctx,
+            "Permission Denied",
+            "I do not have permission to untimeout this user."
           ),
         ],
       });
@@ -59,20 +70,12 @@ const kick: GuildCommand = {
     }
 
     try {
-      const dmEmbed = createInfoEmbed(
-        ctx,
-        `You have been kicked from **${ctx.guild.name}**.`,
-        `Reason: ${reason}`
-      ).setColor("Red");
-      // Attempt to DM the target user before kicking (if they allow DMs)
-      await targetMember.send({ embeds: [dmEmbed] }).catch(() => null);
-
-      await targetMember.kick(reason);
+      await targetMember.timeout(null, reason);
       await ctx.reply({
         embeds: [
           createInfoEmbed(
             ctx,
-            `Successfully kicked **${targetMember.user.tag}**.`,
+            `Successfully removed timeout from <@${targetMember.user.id}>.`,
             `Reason: ${reason}`
           ),
         ],
@@ -83,8 +86,8 @@ const kick: GuildCommand = {
         embeds: [
           createErrorEmbed(
             ctx,
-            "Kick Failed",
-            "An error occurred while trying to kick the user."
+            "Untimeout Failed",
+            "An error occurred while trying to untimeout the user."
           ),
         ],
       });
@@ -92,4 +95,4 @@ const kick: GuildCommand = {
   },
 };
 
-export default kick;
+export default untimeout;

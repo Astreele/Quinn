@@ -1,12 +1,11 @@
 import { ApplicationCommandOptionType } from "discord.js";
-import { GuildCommand } from "../../types";
-import { createErrorEmbed, createInfoEmbed } from "../../utils/embedBuilder";
+import { GuildCommand } from "../../../types";
+import { createErrorEmbed, createInfoEmbed } from "../../../utils/embedBuilder";
 import { warningsDB } from "./warn";
 
 const warnings: GuildCommand = {
   name: "warnings",
   description: "Displays a list of previous warnings for a specific user.",
-  category: "moderation",
   conf: {
     modOnly: true,
     guildOnly: true,

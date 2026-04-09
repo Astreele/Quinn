@@ -2,14 +2,12 @@ import {
   ApplicationCommandOptionType,
   PermissionFlagsBits,
 } from "discord.js";
-import { GuildCommand } from "../../types";
-import { createErrorEmbed, createInfoEmbed } from "../../utils/embedBuilder";
+import { GuildCommand } from "../../../types";
+import { createErrorEmbed, createInfoEmbed } from "../../../utils/embedBuilder";
 
-const lock: GuildCommand = {
-  name: "lock",
-  description:
-    "Locks down a channel, preventing regular members from sending messages.",
-  category: "moderation",
+const unlock: GuildCommand = {
+  name: "unlock",
+  description: "Unlocks a previously locked channel.",
   conf: {
     modOnly: true,
     guildOnly: true,
@@ -17,13 +15,13 @@ const lock: GuildCommand = {
   options: [
     {
       name: "channel",
-      description: "The channel to lock (defaults to current channel)",
+      description: "The channel to unlock (defaults to current channel)",
       type: ApplicationCommandOptionType.Channel,
       required: false,
     },
     {
       name: "reason",
-      description: "Reason for the lockdown",
+      description: "Reason for unlocking",
       type: ApplicationCommandOptionType.String,
       required: false,
     },
@@ -32,7 +30,6 @@ const lock: GuildCommand = {
     const parsedChannel = await ctx.parseChannel("channel", 0);
     let targetChannel = parsedChannel || ctx.channel;
 
-    // Reason parsing depends on whether standard channel wasn't given
     let reason: string | null = null;
     if (parsedChannel) {
       reason = ctx.parseString("reason", 1, true);
@@ -47,7 +44,7 @@ const lock: GuildCommand = {
     if (!targetChannel || !("permissionOverwrites" in targetChannel)) {
       await ctx.reply({
         embeds: [
-          createErrorEmbed(ctx, "Lock Failed", "Could not lock this channel."),
+          createErrorEmbed(ctx, "Unlock Failed", "Could not unlock this channel."),
         ],
       });
       return;
@@ -56,11 +53,11 @@ const lock: GuildCommand = {
     const overwrite = targetChannel.permissionOverwrites.cache.get(
       ctx.guild.id
     );
-    if (overwrite && overwrite.deny.has(PermissionFlagsBits.SendMessages)) {
+    if (!overwrite || !overwrite.deny.has(PermissionFlagsBits.SendMessages)) {
       const location = targetChannel.id === ctx.channel?.id ? "This" : `<#${targetChannel.id}>`;
       await ctx.reply({
         embeds: [
-          createErrorEmbed(ctx, "Already Locked", `${location} channel is already locked.`),
+          createErrorEmbed(ctx, "Not Locked", `${location} channel is not locked.`),
         ],
       });
       return;
@@ -70,19 +67,19 @@ const lock: GuildCommand = {
       await targetChannel.permissionOverwrites.edit(
         ctx.guild.id,
         {
-          SendMessages: false,
-          AddReactions: false,
-          SendMessagesInThreads: false,
+          SendMessages: null,
+          AddReactions: null,
+          SendMessagesInThreads: null,
         },
         { reason }
       );
 
-      const location = targetChannel.id !== ctx.channel?.id ? `<#${targetChannel.id}>` : "🔒 This";
+      const location = targetChannel.id !== ctx.channel?.id ? `<#${targetChannel.id}>` : "🔓 This";
       await ctx.reply({
         embeds: [
           createInfoEmbed(
             ctx,
-            `${location} channel has been locked.`,
+            `${location} channel has been unlocked.`,
             `Reason: ${reason}`
           ),
         ],
@@ -93,8 +90,8 @@ const lock: GuildCommand = {
         embeds: [
           createErrorEmbed(
             ctx,
-            "Lock Failed",
-            "An error occurred while trying to lock the channel. Check my permissions."
+            "Unlock Failed",
+            "I don't have permissions to unlock this channel."
           ),
         ],
       });
@@ -102,4 +99,4 @@ const lock: GuildCommand = {
   },
 };
 
-export default lock;
+export default unlock;

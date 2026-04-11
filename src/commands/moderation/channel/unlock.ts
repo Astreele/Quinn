@@ -1,14 +1,10 @@
-import {
-  ApplicationCommandOptionType,
-  PermissionFlagsBits,
-  EmbedBuilder,
-} from "discord.js";
-import { GuildCommand } from "../../types";
+import { ApplicationCommandOptionType, PermissionFlagsBits } from "discord.js";
+import { GuildCommand } from "../../../types";
+import { createErrorEmbed, createInfoEmbed } from "../../../utils/embedBuilder";
 
 const unlock: GuildCommand = {
   name: "unlock",
   description: "Unlocks a previously locked channel.",
-  category: "moderation",
   conf: {
     modOnly: true,
     guildOnly: true,
@@ -42,14 +38,16 @@ const unlock: GuildCommand = {
 
     reason = reason || "No reason provided.";
 
-    const embed = new EmbedBuilder()
-      .setFooter({ text: `Requested by ${ctx.author.username}` })
-      .setTimestamp()
-      .setColor("Red");
-
     if (!targetChannel || !("permissionOverwrites" in targetChannel)) {
-      embed.setDescription("Could not unlock this channel.");
-      await ctx.reply({ embeds: [embed] });
+      await ctx.reply({
+        embeds: [
+          createErrorEmbed(
+            ctx,
+            "Unlock Failed",
+            "Could not unlock this channel."
+          ),
+        ],
+      });
       return;
     }
 
@@ -57,13 +55,19 @@ const unlock: GuildCommand = {
       ctx.guild.id
     );
     if (!overwrite || !overwrite.deny.has(PermissionFlagsBits.SendMessages)) {
-      if (targetChannel.id === ctx.channel?.id) {
-        embed.setDescription("This channel is not locked.");
-        await ctx.reply({ embeds: [embed] });
-      } else {
-        embed.setDescription(`<#${targetChannel.id}> is not locked.`);
-        await ctx.reply({ embeds: [embed] });
-      }
+      const location =
+        targetChannel.id === ctx.channel?.id
+          ? "This"
+          : `<#${targetChannel.id}>`;
+      await ctx.reply({
+        embeds: [
+          createErrorEmbed(
+            ctx,
+            "Not Locked",
+            `${location} channel is not locked.`
+          ),
+        ],
+      });
       return;
     }
 
@@ -78,23 +82,30 @@ const unlock: GuildCommand = {
         { reason }
       );
 
-      if (targetChannel.id !== ctx.channel?.id) {
-        embed
-          .setTitle(`Successfully unlocked <#${targetChannel.id}>.`)
-          .setDescription(`Reason: ${reason}`)
-          .setColor("Yellow");
-        await ctx.reply({ embeds: [embed] });
-      } else {
-        embed
-          .setTitle("🔓 This channel has been unlocked.")
-          .setDescription(`Reason: ${reason}`)
-          .setColor("Yellow");
-        await ctx.reply({ embeds: [embed] });
-      }
+      const location =
+        targetChannel.id !== ctx.channel?.id
+          ? `<#${targetChannel.id}>`
+          : "🔓 This";
+      await ctx.reply({
+        embeds: [
+          createInfoEmbed(
+            ctx,
+            `${location} channel has been unlocked.`,
+            `Reason: ${reason}`
+          ),
+        ],
+      });
     } catch (error) {
       console.error(error);
-      embed.setDescription("I don't have permissions to unlock this channel.");
-      await ctx.reply({ embeds: [embed] });
+      await ctx.reply({
+        embeds: [
+          createErrorEmbed(
+            ctx,
+            "Unlock Failed",
+            "I don't have permissions to unlock this channel."
+          ),
+        ],
+      });
     }
   },
 };

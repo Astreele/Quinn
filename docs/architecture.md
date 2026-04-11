@@ -5,7 +5,7 @@ This document provides a high-level overview of the Quinn Discord bot's architec
 ## Execution Flow
 
 1.  **Initialization**: The bot starts at `src/index.ts`. It loads environment variables, ensures required ones like `DISCORD_TOKEN` exist, and initializes the Discord.js `Client` with required intents (Guilds, GuildMessages, MessageContent).
-2.  **Command Loading**: The system dynamically loads all commands from the `src/commands` subdirectories. It instantiates commands, assigns their category based on the directory name, and registers them in a `Collection`.
+2.  **Command Loading**: The system dynamically loads all commands from all category subdirectories under `src/commands/`. Category folders are transparent — all commands merge into one flat namespace. The command name comes from the file's exported `name` property, not the directory path.
 3.  **Command Registration**: When the `clientReady` event fires, the bot registers slash commands via the Discord REST API globally or, if configured, to a specific testing guild.
 4.  **Message / Interaction Handling**:
     - **Prefix Commands**: The `messageCreate` event listener checks if a message starts with the prefix and resolves the requested command.
@@ -19,7 +19,7 @@ This document provides a high-level overview of the Quinn Discord bot's architec
 - `src/index.ts`: The main entry point. Sets up the client, loads commands, manages command registration, handles bot events (`messageCreate` and `interactionCreate`), and performs core validation.
 - `src/context.ts`: Defines the `Context` class, which abstracts away the differences between a text message and a slash command interaction so command developers can write unified response logic.
 - `src/types.ts`: Core type definitions for the bot, mainly defining how a `Command` and its `CommandConfig` should be structured.
-- `src/commands/`: A directory populated with subdirectories representing command categories (e.g., `utilities`). Every TypeScript file inside these subdirectories is treating as a command.
+- `src/commands/`: A directory containing category subdirectories (e.g., `admin/`, `moderation/`, `fun/`, `utilities/`). Categories are transparent — they are ONLY for developer organization and are NOT part of the command path. All commands from all categories merge into one flat namespace. A file like `src/commands/moderation/ban.ts` becomes `/ban`, and `src/commands/moderation/channel/lock.ts` becomes `/channel lock`.
 
 ## Validation Layer
 

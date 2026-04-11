@@ -1,5 +1,6 @@
-import { ApplicationCommandOptionType, EmbedBuilder } from "discord.js";
+import { ApplicationCommandOptionType } from "discord.js";
 import { Command } from "../../types";
+import { createErrorEmbed, createInfoEmbed } from "../../utils/embedBuilder";
 
 const eightBall: Command = {
   name: "8ball",
@@ -36,24 +37,23 @@ const eightBall: Command = {
       "Very doubtful.",
     ];
     const question = ctx.parseString("question", 0, true)?.trim();
-    const embed = new EmbedBuilder()
-      .setColor("Yellow")
-      .setFooter({ text: `Requested by ${ctx.author.username}` })
-      .setTimestamp();
 
     if (!question) {
-      embed
-        .setColor("Red")
-        .setTitle("8Ball Error")
-        .setDescription("Ask a yes or no question to use the 8ball.");
-
-      await ctx.reply({ embeds: [embed] });
+      await ctx.reply({
+        embeds: [
+          createErrorEmbed(
+            ctx,
+            "8Ball Error",
+            "Ask a yes or no question to use the 8ball."
+          ),
+        ],
+      });
       return;
     }
 
     const answer = responses[Math.floor(Math.random() * responses.length)];
 
-    embed.setTitle("Magic 8-Ball").addFields(
+    const embed = createInfoEmbed(ctx, "Magic 8-Ball").addFields(
       {
         name: "Question",
         value: question,

@@ -1,5 +1,5 @@
-import { Command } from "../../types";
-import { EmbedBuilder } from "discord.js";
+import { Command } from "../../../types";
+import { createInfoEmbed } from "../../../utils/embedBuilder";
 
 const Uptime: Command = {
   name: "uptime",
@@ -33,9 +33,7 @@ const Uptime: Command = {
     const formattedTime = formatUptime(uptime);
     const startedAt = Math.floor((Date.now() - uptime) / 1000);
 
-    const embed = new EmbedBuilder()
-      .setColor("Yellow")
-      .setTitle("⏱️ Bot Uptime")
+    const embed = createInfoEmbed(ctx, "⏱️ Bot Uptime")
       .setThumbnail(ctx.client.user!.displayAvatarURL())
       .setDescription(`I've been running for:\n\n**${formattedTime}**`)
       .addFields(
@@ -49,9 +47,7 @@ const Uptime: Command = {
           value: `${ctx.client.ws.ping}ms`,
           inline: true,
         }
-      )
-      .setFooter({ text: `Requested by ${ctx.author.username}` })
-      .setTimestamp();
+      );
 
     await ctx.reply({ embeds: [embed] });
   },

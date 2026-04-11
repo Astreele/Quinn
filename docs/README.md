@@ -38,4 +38,4 @@ Please visit the corresponding documentation modules below to understand core ar
 The project code is primarily housed within the `/src` directory:
 
 - `/src/index.ts` is the initialization footprint.
-- `/src/commands/` holds automated directories mapping to different bot commands.
+- `/src/commands/` holds command files organized in category directories (admin/, moderation/, fun/, utilities/). Categories are transparent — they are ONLY for developer organization and are NOT part of the command path. All commands merge into one flat namespace.

@@ -1,5 +1,5 @@
-import { Command } from "../../types";
-import { EmbedBuilder } from "discord.js";
+import { Command } from "../../../types";
+import { createInfoEmbed } from "../../../utils/embedBuilder";
 import process from "process";
 import os from "os";
 import pidusage from "pidusage";
@@ -8,7 +8,6 @@ import { version as djsVersion } from "discord.js";
 const stats: Command = {
   name: "stats",
   description: "Shows the bot's uptime, memory usage, and version details.",
-  category: "utility",
 
   async execute(ctx) {
     const client = ctx.client;
@@ -58,10 +57,11 @@ const stats: Command = {
     const usedMem = totalMem - freeMem;
     const usedMemPercent = (usedMem / totalMem) * 100;
 
-    const embed = new EmbedBuilder()
-      .setColor("Yellow")
-      .setTitle(`${client.user!.username} - Stats`)
-      .setDescription("Here Are My Stats!")
+    const embed = createInfoEmbed(
+      ctx,
+      `${client.user!.username} - Stats`,
+      "Here Are My Stats!"
+    )
       .setThumbnail(client.user!.displayAvatarURL())
       .setFields(
         {
@@ -134,9 +134,7 @@ const stats: Command = {
           value: `${djsVersion}`,
           inline: true,
         }
-      )
-      .setFooter({ text: `Requested by ${ctx.author.username}` })
-      .setTimestamp();
+      );
 
     await ctx.reply({ embeds: [embed] });
   },

@@ -1,5 +1,5 @@
 import { GuildMember, PermissionFlagsBits, Collection } from "discord.js";
-import { Command, Subcommand } from "../types";
+import { Command } from "../types";
 import { ExtendedClient } from "../client";
 import { Context, CommandContext, MessageContext } from "../context";
 import { logger } from "./logger";
@@ -15,7 +15,7 @@ import { logger } from "./logger";
  */
 export async function runValidation(
   client: ExtendedClient,
-  command: Command | Subcommand,
+  command: Command,
   ctx: Context,
   isOwner: boolean
 ): Promise<string | null> {
@@ -130,7 +130,7 @@ export async function runValidation(
  */
 export async function executeWithValidation(
   client: ExtendedClient,
-  command: Command | Subcommand,
+  command: Command,
   ctx: Context
 ) {
   const isOwner = ctx.author.id === process.env.OWNER_ID;

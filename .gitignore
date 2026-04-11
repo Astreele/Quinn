@@ -4,3 +4,4 @@ dist
 .env
 .env_mine
 notes.md
+.qwen/

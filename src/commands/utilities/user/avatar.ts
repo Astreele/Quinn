@@ -1,5 +1,6 @@
-import { ApplicationCommandOptionType, EmbedBuilder } from "discord.js";
-import { Command } from "../../types";
+import { ApplicationCommandOptionType } from "discord.js";
+import { Command } from "../../../types";
+import { createInfoEmbed } from "../../../utils/embedBuilder";
 
 const avatar: Command = {
   name: "avatar",
@@ -19,14 +20,10 @@ const avatar: Command = {
       size: 4096,
     });
 
-    const embed = new EmbedBuilder()
-      .setColor("Yellow")
-      .setTitle(`<@${targetUser.id}>'s Avatar`)
+    const embed = createInfoEmbed(ctx, `<@${targetUser.id}>'s Avatar`)
       .setURL(avatarUrl)
       .setImage(avatarUrl)
-      .setDescription(`[Open original avatar](${avatarUrl})`)
-      .setFooter({ text: `Requested by ${ctx.author.username}` })
-      .setTimestamp();
+      .setDescription(`[Open original avatar](${avatarUrl})`);
 
     await ctx.reply({ embeds: [embed] });
   },

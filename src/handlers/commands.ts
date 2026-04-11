@@ -12,74 +12,6 @@ import {
 } from "discord.js";
 
 /**
- * Discord API Command Structure Constraints
- * ==========================================
- *
- * Discord's Application Command API enforces strict rules for subcommands:
- *
- * 1. MAXIMUM DEPTH: 2 levels
- *    - Level 0: Command root (/command)
- *    - Level 1: Subcommand OR SubcommandGroup (/command subcommand or /command group)
- *    - Level 2: Subcommand inside group (/command group subcommand)
- *
- * 2. NO MIXING WITHIN A SINGLE COMMAND:
- *    A command group must choose ONE structure:
- *    ✅ All flat subcommands (depth 1 only)
- *    ✅ All subcommand groups (depth 2 only)
- *    ❌ Cannot mix flat subcommands with subcommand groups
- *    Note: At depth 0 (root), flat commands and groups CAN coexist because each
- *    top-level entry is an independent Discord application command.
- *
- * 3. WHY THESE CONSTRAINTS?
- *    - Discord's API validation will reject commands that violate these rules
- *    - We enforce them at build time to fail fast with clear error messages
- *    - This ensures consistency between prefix and slash command structures
- *
- * 4. FILESYSTEM STRUCTURE:
- *    Category folders (admin/, moderation/, fun/, utilities/) are transparent —
- *    they are ONLY for developer organization and are NOT part of the command path.
- *    All categories merge into one flat command namespace.
- *
- *    Within a category:
- *    - Files at depth 0 = flat commands (e.g., /ban)
- *    - Folders at depth 0 = subcommand groups (e.g., /channel lock)
- *    - Files inside a group folder = subcommands (e.g., /channel lock)
- *    - Depth limit: max 2 levels from category root (group → subcommand)
- *
- * EXAMPLES (categories are transparent):
- *
- * ✅ VALID - Flat command in any category:
- *   commands/moderation/ban.ts        → /ban
- *   commands/utilities/ping.ts        → /ping
- *
- * ✅ VALID - Grouped structure in any category:
- *   commands/moderation/channel/
- *     lock.ts                         → /channel lock
- *     unlock.ts                       → /channel unlock
- *   commands/utilities/bot/
- *     ping.ts                         → /bot ping
- *     stats.ts                        → /bot stats
- *
- * ✅ VALID - Categories merge: both flat commands and groups at root:
- *   commands/moderation/ban.ts        → /ban
- *   commands/moderation/channel/
- *     lock.ts                         → /channel lock
- *   → Results in: /ban AND /channel lock (both valid at root level)
- *
- * ❌ INVALID - Mixed structure within a group (will throw error):
- *   commands/moderation/channel/
- *     lock.ts                         ← flat subcommand
- *     sub/                            ← subcommand group (MIXING NOT ALLOWED)
- *       lock.ts
- *
- * ❌ INVALID - Too deep (will throw error):
- *   commands/moderation/admin/
- *     user/                           → depth 1
- *       perm/                         → depth 2
- *         ban.ts                      → depth 3 (TOO DEEP)
- */
-
-/**
  * Validates that a command group's structure complies with Discord API constraints.
  * Throws with detailed error message if violations are found.
  *
@@ -232,6 +164,11 @@ async function buildCommandTree(
       cmd.category = category.toUpperCase();
     }
 
+    // Set prefixName from name if not provided
+    if (!cmd.prefixName) {
+      cmd.prefixName = cmd.name;
+    }
+
     children.set(cmd.name, cmd);
   }
 
@@ -250,6 +187,7 @@ async function buildCommandTree(
     // Create a group command
     const groupCommand: Command = {
       name: folder.name,
+      prefixName: folder.name,
       description: `Command group for ${folder.name}`,
       _isGroup: true,
       _children: subChildren,
@@ -395,6 +333,7 @@ async function scanDirectory(dirPath: string): Promise<{
  */
 export async function loadCommands(client: ExtendedClient) {
   client.commands.clear();
+  client.prefixShortcuts.clear();
   const commandsPath = path.join(__dirname, "..", "commands");
 
   try {
@@ -448,6 +387,10 @@ export async function loadCommands(client: ExtendedClient) {
       );
     }
     cmd.category = cmd.category || "GENERAL";
+    // Set prefixName from command name if not provided
+    if (!cmd.prefixName) {
+      cmd.prefixName = cmd.name;
+    }
     mergedTree.set(name, cmd);
   }
 
@@ -484,6 +427,7 @@ export async function loadCommands(client: ExtendedClient) {
 
     const groupCommand: Command = {
       name: folder,
+      prefixName: folder,
       description: `Command group for ${folder}`,
       _isGroup: true,
       _children: subChildren,
@@ -495,6 +439,17 @@ export async function loadCommands(client: ExtendedClient) {
   for (const [name, cmd] of mergedTree) {
     client.commands.set(name, cmd);
   }
+
+  // Register all commands (including subcommands) by prefixName for prefix resolution
+  const registerPrefixShortcuts = (tree: Map<string, Command>) => {
+    for (const cmd of tree.values()) {
+      client.prefixShortcuts.set(cmd.prefixName!, cmd);
+      if (cmd._children) {
+        registerPrefixShortcuts(cmd._children);
+      }
+    }
+  };
+  registerPrefixShortcuts(mergedTree);
 
   logger.info(`Loaded ${mergedTree.size} top-level commands/groups.`);
 }

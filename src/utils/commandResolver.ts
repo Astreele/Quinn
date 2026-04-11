@@ -52,10 +52,11 @@ export function resolveMessageCommand(
   commandName: string,
   args: string[]
 ): ResolvedCommand | null {
-  const rootCommand = client.commands.get(commandName);
+  // Look up root command by prefixName
+  const rootCommand = client.prefixShortcuts.get(commandName);
   if (!rootCommand) return null;
 
-  // Traverse the tree based on args, enforcing max depth of 2
+  // If the root command is a group with children, traverse using args
   let current: Command = rootCommand;
   const path: string[] = [];
   let consumedArgs = 0;
@@ -69,11 +70,18 @@ export function resolveMessageCommand(
     const nextName = args[consumedArgs]?.toLowerCase();
     if (!nextName) break; // No more args to traverse with
 
-    const next = current._children.get(nextName);
+    // Try to find child by name or prefixName
+    let next: Command | undefined;
+    for (const child of current._children.values()) {
+      if (child.name === nextName || child.prefixName === nextName) {
+        next = child;
+        break;
+      }
+    }
     if (!next) break; // Child not found
 
     current = next;
-    path.push(nextName);
+    path.push(next.prefixName || next.name);
     consumedArgs++;
   }
 
@@ -90,33 +98,33 @@ export function resolveMessageCommand(
 
 /**
  * Resolves a slash command interaction by traversing the command tree.
- * 
+ *
  * Discord API Constraints (Strictly Enforced):
  * - Maximum 2 levels: /command group subcommand
  * - Level 0: Root command
  * - Level 1: Subcommand OR SubcommandGroup
  * - Level 2: Subcommand inside SubcommandGroup
- * 
+ *
  * Discord provides the structure via interaction.options:
  * - getSubcommandGroup(false) - Returns group name if present, null otherwise
  * - getSubcommand(false) - Returns subcommand name
- * 
+ *
  * Resolution Algorithm:
  * 1. Get root command from client.commands
  * 2. Check if subcommandGroup exists (depth 1)
  * 3. If yes, get subcommand from group._children (depth 2)
  * 4. If no, get subcommand directly from root._children (depth 1)
- * 
+ *
  * Example 1 (Flat): /moderation ban
  *   - subcommandGroup: null
  *   - subcommand: "ban"
  *   - Traverse: moderation._children.get("ban")
- * 
+ *
  * Example 2 (Grouped): /moderation user ban
  *   - subcommandGroup: "user"
  *   - subcommand: "ban"
  *   - Traverse: moderation._children.get("user")._children.get("ban")
- * 
+ *
  * @param client - The ExtendedClient instance containing registered commands
  * @param interaction - The ChatInputCommandInteraction to resolve
  * @returns ResolvedCommand object or null if not found

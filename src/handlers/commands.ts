@@ -35,7 +35,9 @@ function validateCommandStructure(
   // because each top-level entry is its own independent Discord application command.
   // The "no mixing" rule applies to subcommands WITHIN a single command.
   if (depth > 0 && hasFiles && hasFolders) {
-    const commandFiles = files.filter((f) => f.hasCommandExport).map((f) => f.name);
+    const commandFiles = files
+      .filter((f) => f.hasCommandExport)
+      .map((f) => f.name);
     throw new Error(
       `Command structure violation: "${commandName}" mixes flat subcommands with subcommand groups.\n` +
         `Discord API requires commands to be EITHER all flat subcommands OR all subcommand groups.\n\n` +
@@ -129,8 +131,7 @@ async function buildCommandTree(
   const folders = folderEntries.map((f) => f.name);
 
   // Use folder name or parent name for validation errors
-  const commandName =
-    parentName || path.basename(dirPath) || category;
+  const commandName = parentName || path.basename(dirPath) || category;
 
   // VALIDATE: Check Discord API constraints BEFORE building
   validateCommandStructure(commandName, filesWithExportInfo, folders, depth);
@@ -211,7 +212,9 @@ async function buildCommandTree(
  * @param cmd - The validated Command object with optional children
  * @returns Array of Discord API-compatible option objects
  */
-function buildSlashCommandOptions(cmd: Command): Array<
+function buildSlashCommandOptions(
+  cmd: Command
+): Array<
   | APIApplicationCommandSubcommandOption
   | APIApplicationCommandSubcommandGroupOption
 > {
@@ -295,13 +298,18 @@ async function scanDirectory(dirPath: string): Promise<{
   folders: string[];
 }> {
   const entries = await fs.readdir(dirPath, { withFileTypes: true });
-  const commandFiles: Array<{ name: string; filePath: string; cmd: Command }> = [];
+  const commandFiles: Array<{ name: string; filePath: string; cmd: Command }> =
+    [];
   const folders: string[] = [];
 
   for (const entry of entries) {
     if (entry.isDirectory()) {
       folders.push(entry.name);
-    } else if (entry.isFile() && entry.name.match(/\.(ts|js)$/) && !entry.name.endsWith(".d.ts")) {
+    } else if (
+      entry.isFile() &&
+      entry.name.match(/\.(ts|js)$/) &&
+      !entry.name.endsWith(".d.ts")
+    ) {
       const filePath = path.join(dirPath, entry.name);
       try {
         delete require.cache[require.resolve(filePath)];
@@ -346,7 +354,11 @@ export async function loadCommands(client: ExtendedClient) {
   const categoryFolders = await fs.readdir(commandsPath);
 
   // === PHASE 1: Aggregate all depth-0 entries across all categories ===
-  const allCommandFiles: Array<{ name: string; filePath: string; cmd: Command }> = [];
+  const allCommandFiles: Array<{
+    name: string;
+    filePath: string;
+    cmd: Command;
+  }> = [];
   const allFolders = new Set<string>();
   // Map: folderName → list of categories that contain it (for cross-category merging)
   const folderCategoryMap = new Map<string, string[]>();
@@ -373,7 +385,12 @@ export async function loadCommands(client: ExtendedClient) {
     name: f.name,
     hasCommandExport: true,
   }));
-  validateCommandStructure("root", filesWithExportInfo, Array.from(allFolders), 0);
+  validateCommandStructure(
+    "root",
+    filesWithExportInfo,
+    Array.from(allFolders),
+    0
+  );
 
   // === PHASE 3: Build the merged command tree ===
   const mergedTree = new Map<string, Command>();

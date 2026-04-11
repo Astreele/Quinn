@@ -7,10 +7,12 @@ This document describes the **Discord API constraints** enforced by the command 
 **Note:** Category folders (`admin/`, `moderation/`, `fun/`, `utilities/`) are **transparent** — they exist ONLY for developer organization and are **NOT part of the command path**. All categories merge into one flat command namespace.
 
 **Cross-category group merging:** If the same group folder name exists in multiple categories, they are merged into a single group. For example:
+
 ```
 src/commands/utilities/user/avatar.ts   → /user avatar
 src/commands/moderation/user/ban.ts     → /user ban
 ```
+
 Both become subcommands of the same `/user` group. Subcommand names within a merged group must still be unique across all categories.
 
 ---
@@ -20,6 +22,7 @@ Both become subcommands of the same `/user` group. Subcommand names within a mer
 ### Constraint 1: Maximum 2 Levels of Nesting
 
 **Discord API Limit:**
+
 ```
 /command                    ← Level 0: Root command
 /command subcommand         ← Level 1: Subcommand
@@ -29,6 +32,7 @@ Both become subcommands of the same `/user` group. Subcommand names within a mer
 **No deeper nesting is allowed.**
 
 **Filesystem Enforcement:**
+
 ```
 src/commands/moderation/          ← category (transparent, not part of path)
   ban.ts                          ← /ban ✅
@@ -46,16 +50,18 @@ src/commands/moderation/          ← category (transparent, not part of path)
 
 **Discord API Rule:**
 A command group must be **EITHER**:
+
 - All flat subcommands (Level 1 only)
 - All subcommand groups (Level 2)
 
 **Cannot mix both at the same level within a group.**
 
-**Note:** At depth 0 (the root command level), flat commands and groups CAN coexist, because each top-level entry is an independent Discord application command. The "no mixing" rule applies only to subcommands *within* a single command/group.
+**Note:** At depth 0 (the root command level), flat commands and groups CAN coexist, because each top-level entry is an independent Discord application command. The "no mixing" rule applies only to subcommands _within_ a single command/group.
 
 **Filesystem Enforcement:**
 
 ❌ **INVALID** - Mixing within a group:
+
 ```
 src/commands/moderation/channel/
   lock.ts         ← Flat subcommand (file)
@@ -65,6 +71,7 @@ src/commands/moderation/channel/
 ```
 
 ✅ **VALID** - All flat within the group:
+
 ```
 src/commands/moderation/channel/
   lock.ts         ← /channel lock
@@ -72,6 +79,7 @@ src/commands/moderation/channel/
 ```
 
 ✅ **VALID** - All grouped within the group:
+
 ```
 src/commands/moderation/channel/
   text/
@@ -81,6 +89,7 @@ src/commands/moderation/channel/
 ```
 
 ✅ **VALID** - Flat commands and groups at root (categories merge):
+
 ```
 src/commands/
   moderation/
@@ -100,6 +109,7 @@ src/commands/
 ### 1. Discord API Validation
 
 If you try to register commands that violate these rules, Discord's API will reject them with errors like:
+
 ```
 Invalid Form Body
 options[0].type: This field is required
@@ -112,11 +122,13 @@ Instead of waiting for Discord to reject commands, we validate **during the buil
 ### 3. Consistency Across All Command Types
 
 **Both prefix and slash commands follow the same constraints:**
+
 - Maximum 2 levels of nesting
 - Same structure rules
 - Same validation enforcement
 
 This ensures:
+
 - Predictable command organization
 - Consistent user experience (prefix and slash behave identically)
 - Alignment with Discord's design patterns
@@ -156,12 +168,14 @@ if (depth === 2 && hasFolders) {
 ### Error Messages
 
 Errors include:
+
 - **Which command** has the violation
 - **What files/folders** are problematic
 - **Why** it's invalid
 - **How to fix it** with specific examples
 
 **Example Error:**
+
 ```
 Failed to load commands in category "moderation":
 Command structure violation: "moderation" mixes flat subcommands with subcommand groups.
@@ -248,6 +262,7 @@ src/commands/moderation/channel/
 **Error:** "mixes flat subcommands with subcommand groups"
 
 **Fix:** Choose one structure:
+
 - All flat: Remove `sub/` folder, keep only files
 - All grouped: Move `lock.ts` and `unlock.ts` into their own subfolder
 
@@ -265,6 +280,7 @@ src/commands/moderation/admin/
 **Error:** "exceeds maximum nesting depth"
 
 **Fix:** Flatten to max 2 levels:
+
 ```
 src/commands/moderation/admin/
   user/
@@ -288,6 +304,7 @@ src/commands/moderation/admin/
 ```
 
 **Resolution stops at depth 2:**
+
 ```typescript
 // If user tries: !group subgroup subsub sub
 // 1. Get root: "group"
@@ -332,6 +349,7 @@ Special file names that become a group's default execution:
 - `_index.js`
 
 **Example:**
+
 ```
 src/commands/moderation/
   user/
@@ -406,9 +424,10 @@ If `_default.ts` exists, running `/moderation user` without a subcommand execute
 
 ### "mixes flat subcommands with subcommand groups"
 
-**Cause:** You have both `.ts` files and folders inside the same *group* directory (not at root).
+**Cause:** You have both `.ts` files and folders inside the same _group_ directory (not at root).
 
 **Fix:** Choose one structure within the group:
+
 - **All flat:** Move folders' contents up, delete folders
 - **All grouped:** Move files into a subfolder (e.g., `general/`)
 
@@ -437,6 +456,7 @@ If `_default.ts` exists, running `/moderation user` without a subcommand execute
 ### From Old Subcommand Arrays
 
 **Before:**
+
 ```typescript
 const moderation: Command = {
   name: "moderation",
@@ -448,6 +468,7 @@ const moderation: Command = {
 ```
 
 **After:**
+
 ```
 src/commands/moderation/
   ban.ts
@@ -455,6 +476,7 @@ src/commands/moderation/
 ```
 
 Each file exports:
+
 ```typescript
 import { GuildCommand } from "../../types";
 
@@ -470,12 +492,14 @@ export default ban;
 ### From Category-Based Paths to Flat Namespace
 
 **Before (category was part of path):**
+
 ```
 src/commands/moderation/ban.ts   → /moderation ban
 src/commands/utilities/ping.ts   → /utilities ping
 ```
 
 **After (categories are transparent):**
+
 ```
 src/commands/moderation/ban.ts   → /ban
 src/commands/utilities/ping.ts   → /ping
@@ -485,16 +509,17 @@ src/commands/utilities/ping.ts   → /ping
 
 ## Summary
 
-| Constraint | Rule | Why | Enforced When |
-|------------|------|-----|---------------|
-| Max Depth | 2 levels within a group | Discord API limit + consistency | Build time + Runtime |
-| No Mixing | All flat OR all groups (within a group) | Discord API requirement | Build time |
-| Root Level | Flat commands + groups CAN coexist | Each is an independent Discord command | Build time |
-| Categories | Transparent, merged at root | Developer organization only | Build time |
-| Valid Files | Must have execute() | Runnable commands | Build time |
-| Valid Names | Must define name | Command identification | Build time |
+| Constraint  | Rule                                    | Why                                    | Enforced When        |
+| ----------- | --------------------------------------- | -------------------------------------- | -------------------- |
+| Max Depth   | 2 levels within a group                 | Discord API limit + consistency        | Build time + Runtime |
+| No Mixing   | All flat OR all groups (within a group) | Discord API requirement                | Build time           |
+| Root Level  | Flat commands + groups CAN coexist      | Each is an independent Discord command | Build time           |
+| Categories  | Transparent, merged at root             | Developer organization only            | Build time           |
+| Valid Files | Must have execute()                     | Runnable commands                      | Build time           |
+| Valid Names | Must define name                        | Command identification                 | Build time           |
 
 **Benefits:**
+
 - ✅ Fail fast with clear errors
 - ✅ No surprise Discord API rejections
 - ✅ Consistent command structure across prefix and slash

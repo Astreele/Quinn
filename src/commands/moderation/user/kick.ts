@@ -1,7 +1,11 @@
 import { ApplicationCommandOptionType } from "discord.js";
 import { GuildCommand } from "../../../types";
 import { createErrorEmbed, createInfoEmbed } from "../../../utils/embedBuilder";
-import { dmUser, assertBotPermission, executeModerationAction } from "../../../utils/moderationHelpers";
+import {
+  dmUser,
+  assertBotPermission,
+  executeModerationAction,
+} from "../../../utils/moderationHelpers";
 
 const kick: GuildCommand = {
   name: "kick",

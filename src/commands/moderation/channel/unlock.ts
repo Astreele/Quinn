@@ -1,7 +1,4 @@
-import {
-  ApplicationCommandOptionType,
-  PermissionFlagsBits,
-} from "discord.js";
+import { ApplicationCommandOptionType, PermissionFlagsBits } from "discord.js";
 import { GuildCommand } from "../../../types";
 import { createErrorEmbed, createInfoEmbed } from "../../../utils/embedBuilder";
 
@@ -44,7 +41,11 @@ const unlock: GuildCommand = {
     if (!targetChannel || !("permissionOverwrites" in targetChannel)) {
       await ctx.reply({
         embeds: [
-          createErrorEmbed(ctx, "Unlock Failed", "Could not unlock this channel."),
+          createErrorEmbed(
+            ctx,
+            "Unlock Failed",
+            "Could not unlock this channel."
+          ),
         ],
       });
       return;
@@ -54,10 +55,17 @@ const unlock: GuildCommand = {
       ctx.guild.id
     );
     if (!overwrite || !overwrite.deny.has(PermissionFlagsBits.SendMessages)) {
-      const location = targetChannel.id === ctx.channel?.id ? "This" : `<#${targetChannel.id}>`;
+      const location =
+        targetChannel.id === ctx.channel?.id
+          ? "This"
+          : `<#${targetChannel.id}>`;
       await ctx.reply({
         embeds: [
-          createErrorEmbed(ctx, "Not Locked", `${location} channel is not locked.`),
+          createErrorEmbed(
+            ctx,
+            "Not Locked",
+            `${location} channel is not locked.`
+          ),
         ],
       });
       return;
@@ -74,7 +82,10 @@ const unlock: GuildCommand = {
         { reason }
       );
 
-      const location = targetChannel.id !== ctx.channel?.id ? `<#${targetChannel.id}>` : "🔓 This";
+      const location =
+        targetChannel.id !== ctx.channel?.id
+          ? `<#${targetChannel.id}>`
+          : "🔓 This";
       await ctx.reply({
         embeds: [
           createInfoEmbed(

@@ -29,7 +29,11 @@ const warnings: GuildCommand = {
     if (userWarnings.length === 0) {
       await ctx.reply({
         embeds: [
-          createInfoEmbed(ctx, `Warnings for <@${targetMember.user.id}>`, `<@${targetMember.user.id}> has no warnings.`),
+          createInfoEmbed(
+            ctx,
+            `Warnings for <@${targetMember.user.id}>`,
+            `<@${targetMember.user.id}> has no warnings.`
+          ),
         ],
       });
       return;
@@ -42,7 +46,11 @@ const warnings: GuildCommand = {
       .join("\n");
     await ctx.reply({
       embeds: [
-        createInfoEmbed(ctx, `Warnings for <@${targetMember.user.id}>`, warningList),
+        createInfoEmbed(
+          ctx,
+          `Warnings for <@${targetMember.user.id}>`,
+          warningList
+        ),
       ],
     });
   },

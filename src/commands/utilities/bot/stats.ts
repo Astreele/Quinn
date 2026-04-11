@@ -57,7 +57,11 @@ const stats: Command = {
     const usedMem = totalMem - freeMem;
     const usedMemPercent = (usedMem / totalMem) * 100;
 
-    const embed = createInfoEmbed(ctx, `${client.user!.username} - Stats`, "Here Are My Stats!")
+    const embed = createInfoEmbed(
+      ctx,
+      `${client.user!.username} - Stats`,
+      "Here Are My Stats!"
+    )
       .setThumbnail(client.user!.displayAvatarURL())
       .setFields(
         {

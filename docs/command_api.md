@@ -55,6 +55,7 @@ If the same group folder name exists in multiple categories, they merge into a s
 src/commands/utilities/user/avatar.ts   → /user avatar
 src/commands/moderation/user/ban.ts     → /user ban
 ```
+
 Both become subcommands of `/user`. Subcommand names must be unique across categories within the same group.
 
 **Important:** When a command has subcommands (is a group), you must always specify a subcommand. The command group itself cannot be executed directly.

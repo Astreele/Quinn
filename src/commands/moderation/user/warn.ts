@@ -49,7 +49,9 @@ const warn: GuildCommand = {
 
     if (targetMember.user.bot) {
       await ctx.reply({
-        embeds: [createErrorEmbed(ctx, "Invalid Target", "You cannot warn a bot.")],
+        embeds: [
+          createErrorEmbed(ctx, "Invalid Target", "You cannot warn a bot."),
+        ],
       });
       return;
     }

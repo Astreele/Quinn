@@ -47,7 +47,11 @@ const unban: GuildCommand = {
       if (!ban) {
         await ctx.reply({
           embeds: [
-            createErrorEmbed(ctx, "User Not Banned", "That user is not currently banned."),
+            createErrorEmbed(
+              ctx,
+              "User Not Banned",
+              "That user is not currently banned."
+            ),
           ],
         });
         return;

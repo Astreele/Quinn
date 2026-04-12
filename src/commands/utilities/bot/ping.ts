@@ -22,7 +22,9 @@ const ping: Command = {
 
     const latency = sent.createdTimestamp - ctx.createdTimestamp;
 
-    embed.setFields({
+    embed
+      .setDescription(null)
+      .setFields({
       name: "⚡ Latency",
       value: `${latency}ms`,
     });

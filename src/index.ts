@@ -3,6 +3,7 @@ import dotenv from "dotenv";
 import { ExtendedClient } from "./client";
 import { loadCommands } from "./handlers/commands";
 import { loadEvents } from "./handlers/events";
+import { database } from "../db_integration/database";
 import { logger } from "./utils/logger";
 
 // Load environment variables
@@ -23,9 +24,36 @@ const client = new ExtendedClient({
   ],
 });
 
+// Graceful shutdown handler
+async function gracefulShutdown(signal: string) {
+  logger.info(`Received ${signal}. Shutting down gracefully...`);
+  try {
+    await database.disconnect();
+    client.destroy();
+    logger.info("Shutdown complete");
+    process.exit(0);
+  } catch (error) {
+    logger.error("Error during shutdown:", error);
+    process.exit(1);
+  }
+}
+
+process.on("SIGINT", () => gracefulShutdown("SIGINT"));
+process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
+
 // Main initialization wrapper
 async function main() {
   try {
+    // Connect to database if configured
+    const databaseUrl = process.env.DATABASE_URL;
+    if (databaseUrl) {
+      const db = await database.connect(databaseUrl);
+      client.setDatabase(db);
+      logger.info("Database integration enabled");
+    } else {
+      logger.warn("DATABASE_URL not set - running without database");
+    }
+
     // Load commands and events
     await loadEvents(client);
     await loadCommands(client);
@@ -34,6 +62,7 @@ async function main() {
     await client.login(process.env.DISCORD_TOKEN);
   } catch (error) {
     logger.error("Failed to start the bot:", error);
+    await database.disconnect().catch(() => {});
     process.exit(1);
   }
 }

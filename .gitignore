@@ -5,3 +5,4 @@ dist
 .env_mine
 notes.md
 .qwen/
+db_integration/migrations

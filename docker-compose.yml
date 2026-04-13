@@ -1,0 +1,73 @@
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: quinn-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: quinn
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - quinn-network
+
+  # Quinn Discord Bot
+  quinn:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: quinn-bot
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      - DISCORD_TOKEN=${DISCORD_TOKEN}
+      - PREFIX=${PREFIX:-$}
+      - OWNER_ID=${OWNER_ID}
+      - CLIENT_ID=${CLIENT_ID}
+      - USE_TEST_GUILD=${USE_TEST_GUILD:-false}
+      - TEST_GUILD_ID=${TEST_GUILD_ID}
+      - DATABASE_URL=postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@postgres:${DB_PORT}/quinn
+      - DB_SSL=false
+      - NODE_ENV=production
+    env_file:
+      - .env
+    networks:
+      - quinn-network
+
+  # Migration runner (one-shot, only when explicitly invoked)
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: migration
+    container_name: quinn-migrate
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      - DATABASE_URL=postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@postgres:${DB_PORT}/quinn
+    command: npm run db:migrate
+    networks:
+      - quinn-network
+    profiles:
+      - migrate
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  quinn-network:
+    driver: bridge

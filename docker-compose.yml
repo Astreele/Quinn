@@ -6,13 +6,13 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_DB: quinn
-      POSTGRES_USER: postgres
+      POSTGRES_USER: ${DB_USER:-postgres}
       POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
       POSTGRES_INITDB_ARGS: "--encoding=UTF8"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -38,7 +38,7 @@ services:
       - CLIENT_ID=${CLIENT_ID}
       - USE_TEST_GUILD=${USE_TEST_GUILD:-false}
       - TEST_GUILD_ID=${TEST_GUILD_ID}
-      - DATABASE_URL=postgresql://postgres:${DB_PASSWORD:-postgres}@postgres:5432/quinn
+      - DATABASE_URL=postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@postgres:5432/quinn
       - DB_SSL=false
       - NODE_ENV=production
     env_file:
@@ -57,7 +57,7 @@ services:
       postgres:
         condition: service_healthy
     environment:
-      - DATABASE_URL=postgresql://postgres:${DB_PASSWORD:-postgres}@postgres:5432/quinn
+      - DATABASE_URL=postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@postgres:5432/quinn
     command: npm run db:migrate
     networks:
       - quinn-network

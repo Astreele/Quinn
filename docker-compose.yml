@@ -38,7 +38,7 @@ services:
       - CLIENT_ID=${CLIENT_ID}
       - USE_TEST_GUILD=${USE_TEST_GUILD:-false}
       - TEST_GUILD_ID=${TEST_GUILD_ID}
-      - DATABASE_URL=postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@postgres:5432/quinn
+      - DATABASE_URL=postgresql://${DB_USER:-postgres}:${DB_PASSWORD:-postgres}@postgres:${DB_PORT}/quinn
       - DB_SSL=false
       - NODE_ENV=production
     env_file:

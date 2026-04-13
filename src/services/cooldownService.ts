@@ -79,7 +79,8 @@ export async function checkAndRecordCooldown(
   if (activeCooldowns.length >= maxUses) {
     const oldestExpires = activeCooldowns[0].expiresAt;
     const remainingMs = oldestExpires.getTime() - now.getTime();
-    const remainingSeconds = remainingMs > 0 ? Math.ceil(remainingMs / 1000) : 1;
+    const remainingSeconds =
+      remainingMs > 0 ? Math.ceil(remainingMs / 1000) : 1;
 
     return { blocked: true, remainingSeconds };
   }
@@ -105,6 +106,8 @@ export async function cleanExpiredCooldowns(db: NodePgDatabase<typeof schema>) {
     .delete(schema.cooldowns)
     .where(lte(schema.cooldowns.expiresAt, new Date()));
 
-  logger.info(`Cleaned up expired cooldowns (removed ${result.rowCount ?? 0} rows)`);
+  logger.info(
+    `Cleaned up expired cooldowns (removed ${result.rowCount ?? 0} rows)`
+  );
   return result;
 }

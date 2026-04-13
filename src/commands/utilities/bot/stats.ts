@@ -8,11 +8,11 @@ import { version as djsVersion } from "discord.js";
 const stats: Command = {
   name: "stats",
   description: "Shows the bot's uptime, memory usage, and version details.",
-  conf : {
-    cooldown : {
-      time : 60,
+  conf: {
+    cooldown: {
+      time: 60,
       limit: 3,
-    }
+    },
   },
 
   async execute(ctx) {

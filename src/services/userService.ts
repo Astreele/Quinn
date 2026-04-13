@@ -74,9 +74,7 @@ export async function softDeleteUser(
     if (wasDeleted) {
       logger.info(`User soft-deleted: ${discordId}`);
     } else {
-      logger.warn(
-        `User not found or already soft-deleted: ${discordId}`
-      );
+      logger.warn(`User not found or already soft-deleted: ${discordId}`);
     }
     return wasDeleted;
   } catch (error) {

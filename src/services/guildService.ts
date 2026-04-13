@@ -14,9 +14,11 @@ export async function getGuild(
   discordId: string
 ): Promise<Guild | null> {
   try {
-    return (await db.query.guilds.findFirst({
-      where: eq(schema.guilds.discordId, discordId),
-    })) ?? null;
+    return (
+      (await db.query.guilds.findFirst({
+        where: eq(schema.guilds.discordId, discordId),
+      })) ?? null
+    );
   } catch (error) {
     logger.error("Failed to get guild:", error);
     throw error;

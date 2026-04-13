@@ -19,6 +19,7 @@ cp .env.example .env
 ```
 
 Required variables in `.env`:
+
 - `DISCORD_TOKEN` - Your Discord bot token
 - `OWNER_ID` - Your Discord user ID
 - `DATABASE_URL` - Already configured for Docker: `postgresql://postgres:postgres@postgres:5432/quinn`
@@ -34,6 +35,7 @@ docker compose up -d
 ```
 
 This will:
+
 - Start a PostgreSQL container with persistent data
 - Build and start the Quinn bot container
 - Connect them on a shared network
@@ -126,16 +128,16 @@ npm start
 
 ## Docker Commands Reference
 
-| Command | Description |
-|---------|-------------|
-| `npm run docker:build` | Rebuild Docker images |
-| `npm run docker:up` | Start all services in background |
-| `npm run docker:down` | Stop all services |
-| `npm run docker:logs` | View logs with follow mode |
-| `npm run db:generate` | Generate migration files |
-| `npm run db:migrate` | Apply migrations |
-| `npm run db:push` | Push schema to DB (dev only) |
-| `npm run db:studio` | Open Drizzle Studio GUI |
+| Command                | Description                      |
+| ---------------------- | -------------------------------- |
+| `npm run docker:build` | Rebuild Docker images            |
+| `npm run docker:up`    | Start all services in background |
+| `npm run docker:down`  | Stop all services                |
+| `npm run docker:logs`  | View logs with follow mode       |
+| `npm run db:generate`  | Generate migration files         |
+| `npm run db:migrate`   | Apply migrations                 |
+| `npm run db:push`      | Push schema to DB (dev only)     |
+| `npm run db:studio`    | Open Drizzle Studio GUI          |
 
 ## Project Structure
 

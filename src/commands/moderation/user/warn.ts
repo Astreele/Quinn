@@ -32,7 +32,11 @@ const warn: GuildCommand = {
     if (!client.db) {
       await ctx.reply({
         embeds: [
-          createErrorEmbed(ctx, "Database Error", "The database is not connected. Please try again later."),
+          createErrorEmbed(
+            ctx,
+            "Database Error",
+            "The database is not connected. Please try again later."
+          ),
         ],
       });
       return;
@@ -76,7 +80,12 @@ const warn: GuildCommand = {
         throw new Error("Failed to create warning in database");
       }
 
-      const warningCount = await warningService.getWarningCount(client.db, targetMember.id, ctx.guild.id) ?? 0;
+      const warningCount =
+        (await warningService.getWarningCount(
+          client.db,
+          targetMember.id,
+          ctx.guild.id
+        )) ?? 0;
 
       await dmUser(targetMember.user, ctx.guild.name, "warned", reason, ctx);
 

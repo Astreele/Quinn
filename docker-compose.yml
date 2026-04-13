@@ -64,7 +64,6 @@ services:
     profiles:
       - migrate
 
-
 volumes:
   postgres_data:
     driver: local

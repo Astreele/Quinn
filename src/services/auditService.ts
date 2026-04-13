@@ -103,10 +103,7 @@ export async function getGuildAuditLogs(
   try {
     return await db.query.auditLogs.findMany({
       where: eq(schema.auditLogs.guildId, guildId),
-      orderBy: [
-        desc(schema.auditLogs.createdAt),
-        desc(schema.auditLogs.id),
-      ],
+      orderBy: [desc(schema.auditLogs.createdAt), desc(schema.auditLogs.id)],
       limit: pagination?.limit,
       offset: pagination?.offset,
     });
@@ -134,10 +131,7 @@ export async function getUserAuditLogs(
         eq(schema.auditLogs.guildId, guildId),
         eq(schema.auditLogs.userId, userUuid)
       ),
-      orderBy: [
-        desc(schema.auditLogs.createdAt),
-        desc(schema.auditLogs.id),
-      ],
+      orderBy: [desc(schema.auditLogs.createdAt), desc(schema.auditLogs.id)],
       limit: pagination?.limit,
       offset: pagination?.offset,
     });
@@ -163,10 +157,7 @@ export async function getAuditLogsByAction(
         eq(schema.auditLogs.guildId, guildId),
         eq(schema.auditLogs.action, action)
       ),
-      orderBy: [
-        desc(schema.auditLogs.createdAt),
-        desc(schema.auditLogs.id),
-      ],
+      orderBy: [desc(schema.auditLogs.createdAt), desc(schema.auditLogs.id)],
       limit: pagination?.limit,
       offset: pagination?.offset,
     });

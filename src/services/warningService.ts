@@ -81,11 +81,7 @@ export async function addWarning(
   data: WarningData,
   options: AddWarningOptions = {}
 ) {
-  const {
-    createAudit = true,
-    auditDetails,
-    auditAction = "warn",
-  } = options;
+  const { createAudit = true, auditDetails, auditAction = "warn" } = options;
 
   return await db.transaction(async (tx) => {
     // Upsert target user to ensure they exist
@@ -97,9 +93,7 @@ export async function addWarning(
     );
 
     if (!targetUser) {
-      throw new Error(
-        `Failed to upsert target user: ${data.userDiscordId}`
-      );
+      throw new Error(`Failed to upsert target user: ${data.userDiscordId}`);
     }
 
     // Upsert moderator to ensure they exist for FK guarantee
@@ -111,9 +105,7 @@ export async function addWarning(
     );
 
     if (!moderatorUser) {
-      throw new Error(
-        `Failed to upsert moderator: ${data.moderatorDiscordId}`
-      );
+      throw new Error(`Failed to upsert moderator: ${data.moderatorDiscordId}`);
     }
 
     const [warning] = await tx
@@ -208,10 +200,7 @@ export async function getUserWarnings(
             eq(schema.warnings.guildId, guildId)
           )
         : eq(schema.warnings.userId, user.id),
-      orderBy: [
-        asc(schema.warnings.createdAt),
-        asc(schema.warnings.id),
-      ],
+      orderBy: [asc(schema.warnings.createdAt), asc(schema.warnings.id)],
       limit: pagination?.limit,
       offset: pagination?.offset,
       with: {

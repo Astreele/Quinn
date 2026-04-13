@@ -13,7 +13,8 @@ class DatabaseService {
     try {
       this.pool = new Pool({
         connectionString: databaseUrl,
-        ssl: process.env.DB_SSL === "true" ? { rejectUnauthorized: false } : false,
+        ssl:
+          process.env.DB_SSL === "true" ? { rejectUnauthorized: false } : false,
       });
 
       // Test the connection

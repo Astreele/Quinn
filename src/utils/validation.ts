@@ -1,8 +1,9 @@
-import { GuildMember, PermissionFlagsBits, Collection } from "discord.js";
+import { GuildMember, PermissionFlagsBits } from "discord.js";
 import { Command } from "../types";
 import { ExtendedClient } from "../client";
 import { Context, CommandContext, MessageContext } from "../context";
 import { logger } from "./logger";
+import * as cooldownService from "../services/cooldownService";
 
 /**
  * Validates a command execution request against its configured CommandConfig limitations.
@@ -81,43 +82,30 @@ export async function runValidation(
     }
   }
 
-  const cooldownKey = ctx.fullCommandName || command.name;
+  // Database-backed cooldown check
+  if (!isOwner && client.db && conf.cooldown) {
+    const cooldownKey = ctx.fullCommandName || command.name;
+    const cooldownSeconds = conf.cooldown.time || 3;
+    const maxUses = conf.cooldown.limit || 1;
 
-  if (!client.cooldowns.has(cooldownKey))
-    client.cooldowns.set(cooldownKey, new Collection());
+    try {
+      const result = await cooldownService.checkAndRecordCooldown(
+        client.db,
+        userId,
+        ctx.author.username,
+        cooldownKey,
+        cooldownSeconds,
+        maxUses,
+        guild?.id
+      );
 
-  const timestamps = client.cooldowns.get(cooldownKey)!;
-  const now = Date.now();
-  const cooldownAmount = (conf.cooldown?.time || 3) * 1000;
-  const maxUses = conf.cooldown?.limit || 1;
-
-  const userTimestamps = timestamps.get(userId) || [];
-  const validTimestamps = userTimestamps.filter(
-    (t) => now < t + cooldownAmount
-  );
-
-  if (validTimestamps.length >= maxUses && !isOwner) {
-    const waitTime = (
-      (validTimestamps[0] + cooldownAmount - now) /
-      1000
-    ).toFixed(1);
-    return `⏳ Wait ${waitTime}s before using this command again.`;
-  }
-
-  validTimestamps.push(now);
-  timestamps.set(userId, validTimestamps);
-
-  setTimeout(() => {
-    const currentTimestamps = timestamps.get(userId);
-    if (currentTimestamps) {
-      const filtered = currentTimestamps.filter((t) => t !== now);
-      if (filtered.length === 0) {
-        timestamps.delete(userId);
-      } else {
-        timestamps.set(userId, filtered);
+      if (result.blocked) {
+        return `⏳ Wait ${result.remainingSeconds}s before using this command again.`;
       }
+    } catch (error) {
+      logger.error("Database cooldown check failed:", error);
     }
-  }, cooldownAmount);
+  }
 
   return null;
 }

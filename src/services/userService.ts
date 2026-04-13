@@ -1,6 +1,6 @@
 import { eq, isNull, isNotNull, and } from "drizzle-orm";
 import { NodePgDatabase } from "drizzle-orm/node-postgres";
-import * as schema from "../../db_integration/schema";
+import * as schema from "../db/schema";
 import { logger } from "../utils/logger";
 
 type User = typeof schema.users.$inferSelect;
@@ -17,8 +17,10 @@ export async function getUser(
   try {
     return (
       (await db.query.users.findFirst({
-        where: (table) =>
-          eq(table.discordId, discordId) && isNull(table.deletedAt),
+        where: and(
+          eq(schema.users.discordId, discordId),
+          isNull(schema.users.deletedAt)
+        ),
       })) ?? null
     );
   } catch (error) {

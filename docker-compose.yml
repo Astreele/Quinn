@@ -9,8 +9,6 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
       POSTGRES_INITDB_ARGS: "--encoding=UTF8"
-    ports:
-      - "${DB_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -27,6 +25,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      target: production
     container_name: quinn-bot
     restart: unless-stopped
     depends_on:
@@ -46,6 +45,25 @@ services:
       - .env
     networks:
       - quinn-network
+
+  # Migration runner (one-shot, only when explicitly invoked)
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: migration
+    container_name: quinn-migrate
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      - DATABASE_URL=postgresql://postgres:${DB_PASSWORD:-postgres}@postgres:5432/quinn
+    command: npm run db:migrate
+    networks:
+      - quinn-network
+    profiles:
+      - migrate
+
 
 volumes:
   postgres_data:

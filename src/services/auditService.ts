@@ -1,6 +1,6 @@
 import { eq, desc, and } from "drizzle-orm";
 import { NodePgDatabase } from "drizzle-orm/node-postgres";
-import * as schema from "../../db_integration/schema";
+import * as schema from "../db/schema";
 import { logger } from "../utils/logger";
 import * as userService from "./userService";
 import type { PaginationOptions } from "./types";

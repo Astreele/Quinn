@@ -4,7 +4,7 @@
     "module": "node20",
     "lib": ["ES2022"],
     "outDir": "./dist",
-    "rootDir": "./",
+    "rootDir": "./src",
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
@@ -15,6 +15,6 @@
     "sourceMap": true,
     "moduleResolution": "nodenext"
   },
-  "include": ["src/**/*", "db_integration/**/*"],
-  "exclude": ["node_modules", "dist", "db_integration/migrations"]
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist", "src/db/migrations"]
 }

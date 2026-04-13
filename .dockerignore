@@ -48,4 +48,4 @@ notes.md
 plan.md
 
 # Drizzle migrations (generated during build)
-db_integration/migrations
+src/db/migrations

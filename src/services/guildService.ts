@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { NodePgDatabase } from "drizzle-orm/node-postgres";
-import * as schema from "../../db_integration/schema";
+import * as schema from "../db/schema";
 import { logger } from "../utils/logger";
 
 type Guild = typeof schema.guilds.$inferSelect;

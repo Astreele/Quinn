@@ -1,7 +1,6 @@
 import { drizzle, NodePgDatabase } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
-import { migrate } from "drizzle-orm/node-postgres/migrator";
-import { logger } from "../src/utils/logger";
+import { logger } from "../utils/logger";
 import * as schema from "./schema";
 
 // Create a singleton database connection

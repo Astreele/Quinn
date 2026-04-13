@@ -1,123 +1,110 @@
-import { eq, and, gt, isNull, lte } from "drizzle-orm";
+import { eq, and, gt, isNull, lte, asc } from "drizzle-orm";
 import { NodePgDatabase } from "drizzle-orm/node-postgres";
-import * as schema from "../../db_integration/schema";
+import * as schema from "../db/schema";
 import { logger } from "../utils/logger";
 import * as userService from "./userService";
 
-/**
- * Check if a command is currently on cooldown for a user (user must exist).
- * Fail-safe: returns true (command blocked) if the database is unreachable.
- */
-export async function isCommandOnCooldown(
-  db: NodePgDatabase<typeof schema>,
-  userDiscordId: string,
-  commandName: string,
-  guildId?: string
-): Promise<boolean> {
-  try {
-    const user = await userService.getUser(db, userDiscordId);
-    if (!user) return false; // to not block new users who don't have a record yet, but still block if DB is down 
-
-    const conditions = [
-      eq(schema.cooldowns.userId, user.id),
-      eq(schema.cooldowns.commandName, commandName),
-      gt(schema.cooldowns.expiresAt, new Date()),
-    ];
-
-    if (guildId) {
-      conditions.push(eq(schema.cooldowns.guildId, guildId));
-    } else {
-      conditions.push(isNull(schema.cooldowns.guildId));
-    }
-
-    const cooldown = await db.query.cooldowns.findFirst({
-      where: and(...conditions),
-    });
-
-    return !!cooldown;
-  } catch (error) {
-    logger.error("Failed to check cooldown — blocking command (fail-safe):", error);
-    return true; // fail-safe: block command if DB fails
-  }
+export interface CooldownResult {
+  /** true = command is blocked, false = allowed */
+  blocked: boolean;
+  /** Seconds until user can use again (only set when blocked). */
+  remainingSeconds: number | null;
 }
 
 /**
- * Set a command cooldown for a user.
- * Will create or update the user if needed to ensure they exist.
- * Caller must provide a valid username for user creation.
+ * Checks if a command is on cooldown and records a use if allowed.
  *
- * @throws If the database operation fails.
+ * Implements a sliding-window rate limiter:
+ * 1. Clean up expired cooldown entries for this user+command
+ * 2. Count how many uses remain in the window
+ * 3. If >= maxUses → blocked (return remaining time until oldest expires)
+ * 4. If < maxUses  → allowed (insert a new cooldown row, return not blocked)
+ *
+ * @param db              Drizzle database instance
+ * @param userDiscordId   Discord user ID
+ * @param username        Discord username (for user upsert)
+ * @param commandName     Full command name (including subcommand if applicable)
+ * @param cooldownSeconds Time window in seconds (e.g., 3 for a 3-second window)
+ * @param maxUses         Maximum allowed uses within the window
+ * @param guildId         Guild ID for guild-scoped cooldowns, or undefined for global
+ * @returns CooldownResult indicating if blocked and how long to wait
  */
-export async function setCommandCooldown(
+export async function checkAndRecordCooldown(
   db: NodePgDatabase<typeof schema>,
   userDiscordId: string,
   username: string,
   commandName: string,
-  expiresAt: Date,
+  cooldownSeconds: number,
+  maxUses: number,
   guildId?: string
-) {
+): Promise<CooldownResult> {
   const user = await userService.upsertUser(db, userDiscordId, username);
-
   if (!user) {
-    throw new Error(`Failed to upsert user for cooldown: ${userDiscordId}`);
+    // If user can't be upserted, don't block — let them through
+    return { blocked: false, remainingSeconds: null };
   }
 
+  const now = new Date();
+  const guildCondition = guildId
+    ? eq(schema.cooldowns.guildId, guildId)
+    : isNull(schema.cooldowns.guildId);
+
+  // Step 1: Clean up expired entries for this user+command
+  await db
+    .delete(schema.cooldowns)
+    .where(
+      and(
+        eq(schema.cooldowns.userId, user.id),
+        eq(schema.cooldowns.commandName, commandName),
+        lte(schema.cooldowns.expiresAt, now),
+        guildCondition
+      )
+    );
+
+  // Step 2: Count remaining active cooldowns (ordered oldest first)
+  const activeCooldowns = await db
+    .select({ expiresAt: schema.cooldowns.expiresAt })
+    .from(schema.cooldowns)
+    .where(
+      and(
+        eq(schema.cooldowns.userId, user.id),
+        eq(schema.cooldowns.commandName, commandName),
+        gt(schema.cooldowns.expiresAt, now),
+        guildCondition
+      )
+    )
+    .orderBy(asc(schema.cooldowns.expiresAt));
+
+  // Step 3: Check if limit is exceeded
+  if (activeCooldowns.length >= maxUses) {
+    const oldestExpires = activeCooldowns[0].expiresAt;
+    const remainingMs = oldestExpires.getTime() - now.getTime();
+    const remainingSeconds = remainingMs > 0 ? Math.ceil(remainingMs / 1000) : 1;
+
+    return { blocked: true, remainingSeconds };
+  }
+
+  // Step 4: Under limit — record this use and allow
+  const expiresAt = new Date(now.getTime() + cooldownSeconds * 1000);
   await db.insert(schema.cooldowns).values({
     userId: user.id,
     commandName,
     guildId: guildId || null,
     expiresAt,
   });
+
+  return { blocked: false, remainingSeconds: null };
 }
 
 /**
- * Clean up all expired cooldowns from the database.
- *
- * @throws If the database operation fails.
+ * Global cleanup of all expired cooldowns across all users/commands.
+ * Useful as a periodic cron job to prevent table bloat.
  */
 export async function cleanExpiredCooldowns(db: NodePgDatabase<typeof schema>) {
   const result = await db
     .delete(schema.cooldowns)
     .where(lte(schema.cooldowns.expiresAt, new Date()));
 
-  logger.info("Cleaned up expired cooldowns");
+  logger.info(`Cleaned up expired cooldowns (removed ${result.rowCount ?? 0} rows)`);
   return result;
-}
-
-/**
- * Get remaining cooldown time for a user.
- * Returns null if no active cooldown exists.
- */
-export async function getCooldownExpiry(
-  db: NodePgDatabase<typeof schema>,
-  userDiscordId: string,
-  commandName: string,
-  guildId?: string
-): Promise<Date | null> {
-  try {
-    const user = await userService.getUser(db, userDiscordId);
-    if (!user) return null;
-
-    const conditions = [
-      eq(schema.cooldowns.userId, user.id),
-      eq(schema.cooldowns.commandName, commandName),
-      gt(schema.cooldowns.expiresAt, new Date()),
-    ];
-
-    if (guildId) {
-      conditions.push(eq(schema.cooldowns.guildId, guildId));
-    } else {
-      conditions.push(isNull(schema.cooldowns.guildId));
-    }
-
-    const cooldown = await db.query.cooldowns.findFirst({
-      where: and(...conditions),
-      columns: { expiresAt: true },
-    });
-
-    return cooldown?.expiresAt ?? null;
-  } catch (error) {
-    logger.error("Failed to get cooldown expiry:", error);
-    return null;
-  }
 }

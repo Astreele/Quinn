@@ -9,6 +9,12 @@ const ping: Command = {
   name: "ping",
   description: "Check bot latency",
 
+  conf: {
+    cooldown: {
+      time: 60,
+      limit: 1,
+    },
+  },
   /**
    * Executes the ping command, measuring the round-trip time.
    * @param ctx The abstraction containing the user's message/interaction.

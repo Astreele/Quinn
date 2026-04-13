@@ -3,7 +3,7 @@ import dotenv from "dotenv";
 import { ExtendedClient } from "./client";
 import { loadCommands } from "./handlers/commands";
 import { loadEvents } from "./handlers/events";
-import { database } from "../db_integration/database";
+import { database } from "./db/database";
 import { logger } from "./utils/logger";
 
 // Load environment variables

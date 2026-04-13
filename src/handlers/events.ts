@@ -23,7 +23,8 @@ export async function loadEvents(client: ExtendedClient) {
   for (const file of eventFiles) {
     const filePath = path.join(eventsPath, file);
     const eventModule = await import(filePath);
-    const event: BotEvent = eventModule.default;
+    // Handle double-wrapped default from dynamic import() of CJS modules
+    const event: BotEvent = eventModule.default?.default ?? eventModule.default;
 
     if (!event || !event.name || !event.execute) {
       logger.warn(`The event at ${filePath} is missing required properties.`);

@@ -1,9 +1,6 @@
 # ---- Builder Stage ----
 FROM node:20-alpine AS builder
 
-# Install build dependencies for native modules
-RUN apk add --no-cache python3 make g++
-
 WORKDIR /app
 
 # Copy package files first for better caching
@@ -15,7 +12,6 @@ RUN npm ci
 # Copy source code
 COPY tsconfig.json ./
 COPY src/ ./src/
-COPY db_integration/ ./db_integration/
 COPY drizzle.config.ts ./
 
 # Build TypeScript
@@ -23,9 +19,6 @@ RUN npm run build
 
 # ---- Production Stage ----
 FROM node:20-alpine AS production
-
-# Install PostgreSQL client libraries for pg driver
-RUN apk add --no-cache postgresql-libs
 
 WORKDIR /app
 
@@ -38,7 +31,6 @@ RUN npm ci --only=production && npm cache clean --force
 
 # Copy built application from builder stage
 COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/db_integration ./db_integration
 
 # Create non-root user for security
 RUN addgroup -g 1001 -S nodejs && \
@@ -57,3 +49,17 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
 
 # Start the application
 CMD ["node", "dist/index.js"]
+
+# ---- Migration Runner Stage ----
+FROM node:20-alpine AS migration
+
+WORKDIR /app
+
+# Copy package files and install ALL dependencies (including dev for drizzle-kit)
+COPY package.json package-lock.json ./
+RUN npm ci
+
+# Copy source and config needed for migrations
+COPY tsconfig.json ./
+COPY src/ ./src/
+COPY drizzle.config.ts ./

@@ -3,10 +3,12 @@ import { NodePgDatabase } from "drizzle-orm/node-postgres";
 import * as schema from "../db/schema";
 import { logger } from "../utils/logger";
 import * as userService from "./userService";
+import * as guildService from "./guildService";
 import type { PaginationOptions } from "./types";
 
 export interface AuditLogData {
   guildId: string;
+  guildName: string;
   userDiscordId: string;
   username: string;
   discriminator?: string;
@@ -25,7 +27,7 @@ async function _insertAuditLog(
   db: NodePgDatabase<typeof schema>,
   data: {
     guildId: string;
-    userUuid: string;
+    userDiscordId: string;
     action: (typeof schema.actionTypeEnum.enumValues)[number];
     targetId?: string;
     reason?: string;
@@ -36,7 +38,7 @@ async function _insertAuditLog(
     .insert(schema.auditLogs)
     .values({
       guildId: data.guildId,
-      userId: data.userUuid,
+      userId: data.userDiscordId,
       action: data.action,
       targetId: data.targetId,
       reason: data.reason,
@@ -74,10 +76,12 @@ export async function logAudit(
         `Failed to upsert user for audit log: ${data.userDiscordId}`
       );
     }
+    
+    await guildService.upsertGuild(tx, data.guildId, data.guildName);
 
     const auditLog = await _insertAuditLog(tx, {
       guildId: data.guildId,
-      userUuid: user.id,
+      userDiscordId: user.id,
       action: data.action,
       targetId: data.targetId,
       reason: data.reason,
@@ -122,14 +126,14 @@ export async function getGuildAuditLogs(
 export async function getUserAuditLogs(
   db: NodePgDatabase<typeof schema>,
   guildId: string,
-  userUuid: string,
+  userDiscordId: string,
   pagination?: PaginationOptions
 ) {
   try {
     return await db.query.auditLogs.findMany({
       where: and(
         eq(schema.auditLogs.guildId, guildId),
-        eq(schema.auditLogs.userId, userUuid)
+        eq(schema.auditLogs.userId, userDiscordId)
       ),
       orderBy: [desc(schema.auditLogs.createdAt), desc(schema.auditLogs.id)],
       limit: pagination?.limit,

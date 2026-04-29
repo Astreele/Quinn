@@ -96,7 +96,8 @@ export async function runValidation(
         cooldownKey,
         cooldownSeconds,
         maxUses,
-        guild?.id
+        guild?.id,
+        guild?.name
       );
 
       if (result.blocked) {

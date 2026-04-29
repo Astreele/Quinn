@@ -5,11 +5,6 @@ import { logger } from "../utils/logger";
 
 type User = typeof schema.users.$inferSelect;
 
-/**
- * Get an existing user by Discord ID.
- * Excludes soft-deleted users.
- * @returns null if user doesn't exist or is soft-deleted.
- */
 export async function getUser(
   db: NodePgDatabase<typeof schema>,
   discordId: string
@@ -18,7 +13,7 @@ export async function getUser(
     return (
       (await db.query.users.findFirst({
         where: and(
-          eq(schema.users.discordId, discordId),
+          eq(schema.users.id, discordId),
           isNull(schema.users.deletedAt)
         ),
       })) ?? null
@@ -29,10 +24,6 @@ export async function getUser(
   }
 }
 
-/**
- * Get a user including soft-deleted ones.
- * Use only when you need to check deletion status.
- */
 export async function getUserIncludingDeleted(
   db: NodePgDatabase<typeof schema>,
   discordId: string
@@ -40,7 +31,7 @@ export async function getUserIncludingDeleted(
   try {
     return (
       (await db.query.users.findFirst({
-        where: eq(schema.users.discordId, discordId),
+        where: eq(schema.users.id, discordId),
       })) ?? null
     );
   } catch (error) {
@@ -49,12 +40,6 @@ export async function getUserIncludingDeleted(
   }
 }
 
-/**
- * Soft-delete a user. Sets deletedAt instead of removing the record.
- * This preserves all FK relationships (warnings, audit logs, cooldowns).
- *
- * @returns true if the user was marked as deleted, false if already deleted or not found.
- */
 export async function softDeleteUser(
   db: NodePgDatabase<typeof schema>,
   discordId: string
@@ -65,7 +50,7 @@ export async function softDeleteUser(
       .set({ deletedAt: new Date(), updatedAt: new Date() })
       .where(
         and(
-          eq(schema.users.discordId, discordId),
+          eq(schema.users.id, discordId),
           isNull(schema.users.deletedAt)
         )
       );
@@ -83,11 +68,6 @@ export async function softDeleteUser(
   }
 }
 
-/**
- * Restore a soft-deleted user.
- *
- * @returns true if restored, false if user was not soft-deleted or not found.
- */
 export async function restoreUser(
   db: NodePgDatabase<typeof schema>,
   discordId: string
@@ -98,7 +78,7 @@ export async function restoreUser(
       .set({ deletedAt: null, updatedAt: new Date() })
       .where(
         and(
-          eq(schema.users.discordId, discordId),
+          eq(schema.users.id, discordId),
           isNotNull(schema.users.deletedAt)
         )
       );
@@ -114,11 +94,6 @@ export async function restoreUser(
   }
 }
 
-/**
- * Create or update a user with full Discord data synchronization.
- * Reactivates the user if they were soft-deleted.
- * Use this whenever you need to ensure user exists with latest Discord info.
- */
 export async function upsertUser(
   db: NodePgDatabase<typeof schema>,
   discordId: string,
@@ -129,18 +104,18 @@ export async function upsertUser(
     const [user] = await db
       .insert(schema.users)
       .values({
-        discordId,
+        id: discordId,
         username,
         discriminator,
         deletedAt: null,
         updatedAt: new Date(),
       })
       .onConflictDoUpdate({
-        target: schema.users.discordId,
+        target: schema.users.id,
         set: {
           username,
           discriminator,
-          deletedAt: null, // reactivate if soft-deleted
+          deletedAt: null,
           updatedAt: new Date(),
         },
       })

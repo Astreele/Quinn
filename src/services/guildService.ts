@@ -16,7 +16,7 @@ export async function getGuild(
   try {
     return (
       (await db.query.guilds.findFirst({
-        where: eq(schema.guilds.discordId, discordId),
+        where: eq(schema.guilds.id, discordId),
       })) ?? null
     );
   } catch (error) {
@@ -39,13 +39,13 @@ export async function upsertGuild(
     const [guild] = await db
       .insert(schema.guilds)
       .values({
-        discordId,
+        id: discordId,
         name,
         prefix: prefix || "$",
         updatedAt: new Date(),
       })
       .onConflictDoUpdate({
-        target: schema.guilds.discordId,
+        target: schema.guilds.id,
         set: {
           name,
           prefix: prefix || schema.guilds.prefix,

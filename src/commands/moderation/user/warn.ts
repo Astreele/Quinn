@@ -74,6 +74,7 @@ const warn: GuildCommand = {
         moderatorDiscriminator: ctx.author.discriminator,
         reason,
         guildId: ctx.guild.id,
+        guildName: ctx.guild.name,
       });
 
       if (!warning) {

@@ -4,6 +4,7 @@ import * as schema from "../db/schema";
 import { logger } from "../utils/logger";
 import * as userService from "./userService";
 import type { PaginationOptions } from "./types";
+import * as guildService from "./guildService"; 
 
 export interface WarningData {
   userDiscordId: string;
@@ -14,6 +15,7 @@ export interface WarningData {
   moderatorDiscriminator?: string;
   reason: string;
   guildId: string;
+  guildName: string;
 }
 
 export interface AddWarningOptions {
@@ -57,7 +59,7 @@ async function _insertAuditLog(
 ) {
   await tx.insert(schema.auditLogs).values({
     guildId: data.guildId,
-    userId: data.userUuid,
+    userId: data.userDiscordId,
     action: data.action,
     targetId: data.targetId,
     reason: data.reason,
@@ -107,6 +109,8 @@ export async function addWarning(
     if (!moderatorUser) {
       throw new Error(`Failed to upsert moderator: ${data.moderatorDiscordId}`);
     }
+    
+    await guildService.upsertGuild(tx, data.guildId, data.guildName);
 
     const [warning] = await tx
       .insert(schema.warnings)
@@ -126,7 +130,7 @@ export async function addWarning(
     if (createAudit) {
       await _insertAuditLog(tx, {
         guildId: data.guildId,
-        userUuid: moderatorUser.id,
+        userDiscordId: moderatorUser.id,
         action: auditAction,
         targetId: data.userDiscordId,
         reason: data.reason,

@@ -98,15 +98,6 @@ async function runValidation(
     )
         return "You do not have permission to use this command.";
 
-    // Block users with explicitly disallowed roles
-    if (conf.disallowedRoles && conf.disallowedRoles.length > 0 && member) {
-        const hasDisallowedRole = member.roles.cache.some(r =>
-            conf.disallowedRoles!.includes(r.id)
-        );
-        if (hasDisallowedRole && !isOwner)
-            return "You are not allowed to use this command.";
-    }
-
     if (conf.allowedRoles && conf.allowedRoles.length > 0 && member) {
         const hasRole = member.roles.cache.some(r =>
             conf.allowedRoles!.includes(r.id)

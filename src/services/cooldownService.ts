@@ -23,6 +23,9 @@ interface CacheEntry {
 
 const cooldownCache = new Map<string, CacheEntry>();
 
+const MAX_CACHE_ENTRIES = 10000;
+const MAX_EXPIRES_ARRAY_LENGTH = 1000;
+
 function getCacheKey(
     userId: string,
     commandName: string,
@@ -58,8 +61,15 @@ export async function loadCooldowns(db: NodePgDatabase<typeof schema>) {
 
             if (existing) {
                 existing.expiresAt.push(cd.expiresAt.getTime());
+                if (existing.expiresAt.length > MAX_EXPIRES_ARRAY_LENGTH) {
+                    existing.expiresAt = existing.expiresAt.slice(-MAX_EXPIRES_ARRAY_LENGTH);
+                }
                 existing.expiresAt.sort((a, b) => a - b);
             } else {
+                if (cooldownCache.size >= MAX_CACHE_ENTRIES) {
+                    const firstKey = cooldownCache.keys().next().value;
+                    if (firstKey) cooldownCache.delete(firstKey);
+                }
                 cooldownCache.set(key, {
                     userId: cd.userId,
                     username: "",
@@ -158,7 +168,14 @@ export async function checkAndRecordCooldown(
 
     if (entry) {
         entry.expiresAt = entry.expiresAt.filter(t => t > now);
+        if (entry.expiresAt.length > MAX_EXPIRES_ARRAY_LENGTH) {
+            entry.expiresAt = entry.expiresAt.slice(-MAX_EXPIRES_ARRAY_LENGTH);
+        }
     } else {
+        if (cooldownCache.size >= MAX_CACHE_ENTRIES) {
+            const firstKey = cooldownCache.keys().next().value;
+            if (firstKey) cooldownCache.delete(firstKey);
+        }
         entry = {
             userId: user.id,
             username,

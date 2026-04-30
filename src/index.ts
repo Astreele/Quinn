@@ -24,6 +24,14 @@ if (!process.env.DISCORD_TOKEN) {
     process.exit(1);
 }
 
+if (!process.env.OWNER_ID || process.env.OWNER_ID.trim() === "") {
+    console.error("Missing or empty OWNER_ID in .env file");
+    process.exit(1);
+}
+
+// Max number of unique users tracked per command to prevent memory exhaustion
+const MAX_COOLDOWN_USERS = 10_000;
+
 class ExtendedClient extends Client {
     public commands = new Collection<string, Command>();
     public cooldowns = new Collection<string, Collection<string, number[]>>();
@@ -38,16 +46,30 @@ const client = new ExtendedClient({
     ]
 });
 
+// Allowlist of valid file extensions for command files
+const VALID_EXTENSIONS = new Set([".ts", ".js"]);
+
 const foldersPath = path.join(__dirname, "commands");
 fs.readdirSync(foldersPath).forEach(folder => {
     const fullPath = path.join(foldersPath, folder);
+
+    // Ensure the resolved path stays within the commands directory
+    const resolvedFolder = path.resolve(fullPath);
+    const resolvedBase = path.resolve(foldersPath);
+    if (!resolvedFolder.startsWith(resolvedBase + path.sep)) return;
+
     if (fs.statSync(fullPath).isDirectory()) {
         fs.readdirSync(fullPath)
-            .filter(f => f.endsWith(".ts") || f.endsWith(".js"))
+            .filter(f => VALID_EXTENSIONS.has(path.extname(f)))
             .forEach(file => {
-                const cmd: Command = require(path.join(fullPath, file)).default;
+                const filePath = path.join(fullPath, file);
+
+                // Guard: resolved file path must stay within the commands folder
+                const resolvedFile = path.resolve(filePath);
+                if (!resolvedFile.startsWith(resolvedBase + path.sep)) return;
+
+                const cmd: Command = require(filePath).default;
                 cmd.category = folder.toUpperCase();
-                //  cmd.filePath = path.join(fullPath, file);
                 client.commands.set(cmd.name, cmd);
             });
     }
@@ -61,7 +83,7 @@ async function runValidation(
     channel: any,
     isOwner: boolean
 ): Promise<string | null> {
-    const conf = { ...command.conf };
+    const conf = { ...(command.conf ?? {}) };
 
     if (conf.ownerOnly && !isOwner)
         return "This Command can only be used by the Bot Owner.";
@@ -75,6 +97,15 @@ async function runValidation(
         !member.permissions.has(PermissionFlagsBits.ManageGuild)
     )
         return "You do not have permission to use this command.";
+
+    // Block users with explicitly disallowed roles
+    if (conf.disallowedRoles && conf.disallowedRoles.length > 0 && member) {
+        const hasDisallowedRole = member.roles.cache.some(r =>
+            conf.disallowedRoles!.includes(r.id)
+        );
+        if (hasDisallowedRole && !isOwner)
+            return "You are not allowed to use this command.";
+    }
 
     if (conf.allowedRoles && conf.allowedRoles.length > 0 && member) {
         const hasRole = member.roles.cache.some(r =>
@@ -119,6 +150,12 @@ async function runValidation(
     validTimestamps.push(now);
     timestamps.set(userId, validTimestamps);
 
+    // Evict oldest entry if the per-command user map grows too large
+    if (timestamps.size > MAX_COOLDOWN_USERS) {
+        const oldestKey = timestamps.firstKey();
+        if (oldestKey) timestamps.delete(oldestKey);
+    }
+
     return null;
 }
 
@@ -150,7 +187,7 @@ client.on("messageCreate", async (message: Message) => {
     try {
         await command.execute(ctx);
     } catch (err) {
-        console.error(err);
+        console.error("[Command Error]", command.name, err instanceof Error ? err.message : String(err));
         message.reply("There was an error running this command.");
     }
 });
@@ -179,7 +216,7 @@ client.on("interactionCreate", async interaction => {
     try {
         await command.execute(ctx);
     } catch (err) {
-        console.error(err);
+        console.error("[Command Error]", command.name, err instanceof Error ? err.message : String(err));
         interaction.reply({
             content: "There was an error running this command.",
             ephemeral: true
@@ -223,7 +260,7 @@ client.once("clientReady", async readyClient => {
             console.log("Successfully reloaded global (/) commands.");
         }
     } catch (error) {
-        console.error("Failed to register slash commands:", error);
+        console.error("Failed to register slash commands:", error instanceof Error ? error.message : String(error));
     }
 });
 

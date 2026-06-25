@@ -13,35 +13,35 @@ dotenv.config();
 
 // Validate required environment variables
 if (!process.env.DISCORD_TOKEN) {
-    logger.error("Missing DISCORD_TOKEN in .env file");
-    process.exit(1);
+  logger.error("Missing DISCORD_TOKEN in .env file");
+  process.exit(1);
 }
 
 // Initialize the Discord client with required intents
 const client = new ExtendedClient({
-    intents: [
-        GatewayIntentBits.Guilds,
-        GatewayIntentBits.GuildMessages,
-        GatewayIntentBits.MessageContent
-    ]
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent,
+  ],
 });
 
 // Graceful shutdown handler
 async function gracefulShutdown(signal: string) {
-    logger.info(`Received ${signal}. Shutting down gracefully...`);
-    try {
-        if (client.db) {
-            await levelService.saveLevels(client.db);
-            await cooldownService.saveCooldowns(client.db);
-        }
-        await database.disconnect();
-        client.destroy();
-        logger.info("Shutdown complete");
-        process.exit(0);
-    } catch (error) {
-        logger.error("Error during shutdown:", error);
-        process.exit(1);
+  logger.info(`Received ${signal}. Shutting down gracefully...`);
+  try {
+    if (client.db) {
+      await levelService.flushAllCaches(client.db);
+      await cooldownService.saveCooldowns(client.db);
     }
+    await database.disconnect();
+    client.destroy();
+    logger.info("Shutdown complete");
+    process.exit(0);
+  } catch (error) {
+    logger.error("Error during shutdown:", error);
+    process.exit(1);
+  }
 }
 
 process.on("SIGINT", () => gracefulShutdown("SIGINT"));
@@ -49,31 +49,31 @@ process.on("SIGTERM", () => gracefulShutdown("SIGTERM"));
 
 // Main initialization wrapper
 async function main() {
-    try {
-        // Connect to database if configured
-        const databaseUrl = process.env.DATABASE_URL;
-        if (databaseUrl) {
-            const db = await database.connect(databaseUrl);
-            client.setDatabase(db);
-            logger.info("Database integration enabled");
-            await cooldownService.loadCooldowns(db);
-            await levelService.loadLevels(db);
-            levelService.startLevelSync(db);
-        } else {
-            logger.warn("DATABASE_URL not set - running without database");
-        }
-
-        // Load commands and events
-        await loadEvents(client);
-        await loadCommands(client);
-        // await registerCommands(client);
-        // Login to Discord
-        await client.login(process.env.DISCORD_TOKEN);
-    } catch (error) {
-        logger.error("Failed to start the bot:", error);
-        await database.disconnect().catch(() => {});
-        process.exit(1);
+  try {
+    // Connect to database if configured
+    const databaseUrl = process.env.DATABASE_URL;
+    if (databaseUrl) {
+      const db = await database.connect(databaseUrl);
+      client.setDatabase(db);
+      logger.info("Database integration enabled");
+      await cooldownService.loadCooldowns(db);
+      levelService.startWatchdog(db);
+      cooldownService.cleanUp(db);
+    } else {
+      logger.warn("DATABASE_URL not set - running without database");
     }
+
+    // Load commands and events
+    await loadEvents(client);
+    await loadCommands(client);
+    // await registerCommands(client);
+    // Login to Discord
+    await client.login(process.env.DISCORD_TOKEN);
+  } catch (error) {
+    logger.error("Failed to start the bot:", error);
+    await database.disconnect().catch(() => {});
+    process.exit(1);
+  }
 }
 
 main();

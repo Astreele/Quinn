@@ -1,127 +1,159 @@
-import { eq, and, gt, isNull, lte, asc } from "drizzle-orm";
+import { gt, lte } from "drizzle-orm";
 import { NodePgDatabase } from "drizzle-orm/node-postgres";
 import * as schema from "../db/schema";
 import { logger } from "../utils/logger";
 import * as userService from "./userService";
 import * as guildService from "./guildService";
 
+const PERSISTENCE_THRESHOLD_SECONDS = 60 * 60 * 60;
+
+let CleanUpInterval: NodeJS.Timeout | null = null;
+
+const CLEAN_UP_TICK_MS = 60 * 1000;
+
 export interface CooldownResult {
-    // true = command is blocked, false = allowed
-    blocked: boolean;
-    // Seconds until user can use again (only set when blocked).
-    remainingSeconds: number | null;
+  // true = command is blocked, false = allowed
+  blocked: boolean;
+  // Seconds until user can use again (only set when blocked).
+  remainingSeconds: number | null;
 }
 
 interface CacheEntry {
-    userId: string;
-    username: string;
-    guildId: string | null;
-    guildName: string | null;
-    commandName: string;
-    expiresAt: number[];
+  userId: string;
+  username: string;
+  guildId: string | null;
+  guildName: string | null;
+  commandName: string;
+  cooldowns: {
+    expiresAt: number;
+    isPersistent: boolean;
+  }[];
 }
 
 const cooldownCache = new Map<string, CacheEntry>();
 
-const MAX_CACHE_ENTRIES = 10000;
+const MAX_CACHE_ENTRIES = 20000;
 const MAX_EXPIRES_ARRAY_LENGTH = 1000;
 
 function getCacheKey(
-    userId: string,
-    commandName: string,
-    guildId?: string | null
+  userId: string,
+  commandName: string,
+  guildId?: string | null
 ) {
-    return `${userId}:${commandName}:${guildId || "global"}`;
+  return `${userId}:${commandName}:${guildId || "global"}`;
 }
 
 export async function loadCooldowns(db: NodePgDatabase<typeof schema>) {
-    try {
-        const now = new Date();
+  try {
+    const now = new Date();
 
-        // 1. Delete any expired cooldowns left over from a previous crash
-        const deleteResult = await db
-            .delete(schema.cooldowns)
-            .where(lte(schema.cooldowns.expiresAt, now));
+    // Clean up expired ones from DB first to catch anything missed during downtime
+    const deleteResult = await db
+      .delete(schema.cooldowns)
+      .where(lte(schema.cooldowns.expiresAt, now));
 
-        if ((deleteResult.rowCount ?? 0) > 0) {
-            logger.info(
-                `Cleaned up ${deleteResult.rowCount} expired cooldowns from database.`
-            );
-        }
-
-        // 2. Fetch the remaining valid cooldowns
-        const activeCooldowns = await db
-            .select()
-            .from(schema.cooldowns)
-            .where(gt(schema.cooldowns.expiresAt, now));
-
-        for (const cd of activeCooldowns) {
-            const key = getCacheKey(cd.userId, cd.commandName, cd.guildId);
-            const existing = cooldownCache.get(key);
-
-            if (existing) {
-                existing.expiresAt.push(cd.expiresAt.getTime());
-                if (existing.expiresAt.length > MAX_EXPIRES_ARRAY_LENGTH) {
-                    existing.expiresAt = existing.expiresAt.slice(-MAX_EXPIRES_ARRAY_LENGTH);
-                }
-                existing.expiresAt.sort((a, b) => a - b);
-            } else {
-                if (cooldownCache.size >= MAX_CACHE_ENTRIES) {
-                    const firstKey = cooldownCache.keys().next().value;
-                    if (firstKey) cooldownCache.delete(firstKey);
-                }
-                cooldownCache.set(key, {
-                    userId: cd.userId,
-                    username: "",
-                    guildId: cd.guildId,
-                    guildName: "",
-                    commandName: cd.commandName,
-                    expiresAt: [cd.expiresAt.getTime()]
-                });
-            }
-        }
-        logger.info(
-            `Loaded ${activeCooldowns.length} active cooldowns into memory.`
-        );
-    } catch (error) {
-        logger.error("Failed to load cooldowns:", error);
+    if ((deleteResult.rowCount ?? 0) > 0) {
+      logger.info(
+        `Cleaned up ${deleteResult.rowCount} expired cooldowns from database.`
+      );
     }
+
+    // Fetch active ones
+    const activeCooldowns = await db
+      .select()
+      .from(schema.cooldowns)
+      .where(gt(schema.cooldowns.expiresAt, now));
+
+    for (const cd of activeCooldowns) {
+      const key = getCacheKey(cd.userId, cd.commandName, cd.guildId);
+      let existing = cooldownCache.get(key);
+
+      if (existing) {
+        existing.cooldowns.push({
+          expiresAt: cd.expiresAt.getTime(),
+          isPersistent: true, // Loaded from DB, so it is inherently persistent
+        });
+        if (existing.cooldowns.length > MAX_EXPIRES_ARRAY_LENGTH) {
+          existing.cooldowns = existing.cooldowns.slice(
+            -MAX_EXPIRES_ARRAY_LENGTH
+          );
+        }
+      } else {
+        if (cooldownCache.size >= MAX_CACHE_ENTRIES) {
+          const firstKey = cooldownCache.keys().next().value;
+          if (firstKey) cooldownCache.delete(firstKey);
+        }
+        cooldownCache.set(key, {
+          userId: cd.userId,
+          username: "",
+          guildId: cd.guildId,
+          guildName: "",
+          commandName: cd.commandName,
+          cooldowns: [
+            {
+              expiresAt: cd.expiresAt.getTime(),
+              isPersistent: true,
+            },
+          ],
+        });
+      }
+    }
+
+    // Ensure times are ordered correctly inside memory windows
+    for (const entry of cooldownCache.values()) {
+      entry.cooldowns.sort((a, b) => a.expiresAt - b.expiresAt);
+    }
+
+    logger.info(
+      `Loaded ${activeCooldowns.length} long-term active cooldowns into memory.`
+    );
+  } catch (error) {
+    logger.error("Failed to load cooldowns:", error);
+  }
 }
 
 export async function saveCooldowns(db: NodePgDatabase<typeof schema>) {
-    try {
-        const now = Date.now();
-        const toInsert: (typeof schema.cooldowns.$inferInsert)[] = [];
+  try {
+    stopCleanUp();
+    const now = Date.now();
+    const toInsert: (typeof schema.cooldowns.$inferInsert)[] = [];
 
-        for (const [key, entry] of cooldownCache.entries()) {
-            const validExpires = entry.expiresAt.filter(t => t > now);
-            if (validExpires.length === 0) continue;
+    // Gather active timestamps that were tagged as persistent
+    for (const entry of cooldownCache.values()) {
+      const validLongTerms = entry.cooldowns.filter(
+        (c) => c.isPersistent && c.expiresAt > now
+      );
 
-            for (const expireTime of validExpires) {
-                toInsert.push({
-                    userId: entry.userId,
-                    commandName: entry.commandName,
-                    guildId: entry.guildId || null,
-                    expiresAt: new Date(expireTime)
-                });
-            }
-        }
-
-        await db.delete(schema.cooldowns);
-
-        if (toInsert.length > 0) {
-            const chunkSize = 1000;
-            for (let i = 0; i < toInsert.length; i += chunkSize) {
-                await db
-                    .insert(schema.cooldowns)
-                    .values(toInsert.slice(i, i + chunkSize));
-            }
-        }
-
-        logger.info(`Saved ${toInsert.length} active cooldowns to database.`);
-    } catch (error) {
-        logger.error("Failed to save cooldowns:", error);
+      for (const item of validLongTerms) {
+        toInsert.push({
+          userId: entry.userId,
+          commandName: entry.commandName,
+          guildId: entry.guildId || null,
+          expiresAt: new Date(item.expiresAt),
+        });
+      }
     }
+
+    // Step A: Clear expired rows from DB to avoid table swelling
+    await db
+      .delete(schema.cooldowns)
+      .where(lte(schema.cooldowns.expiresAt, new Date(now)));
+
+    // Step B: Batch save/update active records safely
+    if (toInsert.length > 0) {
+      const chunkSize = 1000;
+      for (let i = 0; i < toInsert.length; i += chunkSize) {
+        await db
+          .insert(schema.cooldowns)
+          .values(toInsert.slice(i, i + chunkSize))
+          .onConflictDoNothing();
+      }
+    }
+
+    logger.info(`Synced ${toInsert.length} long-term cooldowns to database.`);
+  } catch (error) {
+    logger.error("Failed to save cooldowns:", error);
+  }
 }
 
 /**
@@ -143,95 +175,130 @@ export async function saveCooldowns(db: NodePgDatabase<typeof schema>) {
  * @returns CooldownResult indicating if blocked and how long to wait
  */
 export async function checkAndRecordCooldown(
-    db: NodePgDatabase<typeof schema>,
-    userDiscordId: string,
-    username: string,
-    commandName: string,
-    cooldownSeconds: number,
-    maxUses: number,
-    guildId?: string,
-    guildName?: string
+  db: NodePgDatabase<typeof schema>,
+  userDiscordId: string,
+  username: string,
+  commandName: string,
+  cooldownSeconds: number,
+  maxUses: number,
+  guildId?: string,
+  guildName?: string
 ): Promise<CooldownResult> {
-    const user = await userService.upsertUser(db, userDiscordId, username);
-    if (!user) {
-        return { blocked: false, remainingSeconds: null };
+  const now = Date.now();
+  const key = getCacheKey(userDiscordId, commandName, guildId);
+
+  let entry = cooldownCache.get(key);
+
+  if (entry) {
+    // Evict expired timestamps from this user's running window
+    entry.cooldowns = entry.cooldowns.filter((c) => c.expiresAt > now);
+    if (entry.cooldowns.length > MAX_EXPIRES_ARRAY_LENGTH) {
+      entry.cooldowns = entry.cooldowns.slice(-MAX_EXPIRES_ARRAY_LENGTH);
     }
-
-    if (guildId && guildName) {
-        await guildService.upsertGuild(db, guildId, guildName);
+  } else {
+    // Allocate space if entry is new
+    if (cooldownCache.size >= MAX_CACHE_ENTRIES) {
+      const firstKey = cooldownCache.keys().next().value;
+      if (firstKey) cooldownCache.delete(firstKey);
     }
+    entry = {
+      userId: userDiscordId,
+      username,
+      guildId: guildId || null,
+      guildName: guildName || null,
+      commandName,
+      cooldowns: [],
+    };
+    cooldownCache.set(key, entry);
+  }
 
-    const now = Date.now();
-    const key = getCacheKey(user.id, commandName, guildId);
+  // Evaluate sliding window capacity boundary
+  if (entry.cooldowns.length >= maxUses) {
+    const oldest = entry.cooldowns[0].expiresAt;
+    const remainingMs = oldest - now;
+    const remainingSeconds =
+      remainingMs > 0 ? Math.ceil(remainingMs / 1000) : 1;
 
-    let entry = cooldownCache.get(key);
+    return { blocked: true, remainingSeconds };
+  }
 
-    if (entry) {
-        entry.expiresAt = entry.expiresAt.filter(t => t > now);
-        if (entry.expiresAt.length > MAX_EXPIRES_ARRAY_LENGTH) {
-            entry.expiresAt = entry.expiresAt.slice(-MAX_EXPIRES_ARRAY_LENGTH);
+  // Determine whether this item needs database protection
+  const isPersistent = cooldownSeconds >= PERSISTENCE_THRESHOLD_SECONDS;
+
+  // Add current tracking block to array
+  entry.cooldowns.push({
+    expiresAt: now + cooldownSeconds * 1000,
+    isPersistent,
+  });
+  entry.cooldowns.sort((a, b) => a.expiresAt - b.expiresAt);
+
+  entry.username = username;
+  if (guildId && guildName) {
+    entry.guildId = guildId;
+    entry.guildName = guildName;
+  }
+
+  // LAZY WRITES: Only resolve DB tables asynchronously if this is a persistent execution
+  // Fire-and-forget safely in background to not block the current Discord interaction thread
+  if (isPersistent) {
+    (async () => {
+      try {
+        const user = await userService.upsertUser(db, userDiscordId, username);
+        if (user && guildId && guildName) {
+          await guildService.upsertGuild(db, guildId, guildName);
         }
-    } else {
-        if (cooldownCache.size >= MAX_CACHE_ENTRIES) {
-            const firstKey = cooldownCache.keys().next().value;
-            if (firstKey) cooldownCache.delete(firstKey);
-        }
-        entry = {
-            userId: user.id,
-            username,
-            guildId: guildId || null,
-            guildName: guildName || null,
-            commandName,
-            expiresAt: []
-        };
-        cooldownCache.set(key, entry);
-    }
+      } catch (err) {
+        logger.error(
+          "Background error during persistent user/guild sync:",
+          err
+        );
+      }
+    })();
+  }
 
-    if (entry.expiresAt.length >= maxUses) {
-        const oldest = entry.expiresAt[0];
-        const remainingMs = oldest - now;
-        const remainingSeconds =
-            remainingMs > 0 ? Math.ceil(remainingMs / 1000) : 1;
-
-        return { blocked: true, remainingSeconds };
-    }
-
-    entry.expiresAt.push(now + cooldownSeconds * 1000);
-    entry.expiresAt.sort((a, b) => a - b);
-
-    entry.username = username;
-    if (guildId && guildName) {
-        entry.guildId = guildId;
-        entry.guildName = guildName;
-    }
-
-    return { blocked: false, remainingSeconds: null };
+  return { blocked: false, remainingSeconds: null };
 }
 
 /**
  * Global cleanup of all expired cooldowns across all users/commands.
  * Useful as a periodic cron job to prevent table bloat.
  */
-export async function cleanExpiredCooldowns(db: NodePgDatabase<typeof schema>) {
-    const now = Date.now();
-    let memoryRemoved = 0;
+export function cleanUp(db: NodePgDatabase<typeof schema>) {
+  if (CleanUpInterval) return;
 
-    for (const [key, entry] of cooldownCache.entries()) {
-        const valid = entry.expiresAt.filter(t => t > now);
-        if (valid.length === 0) {
-            cooldownCache.delete(key);
-            memoryRemoved++;
-        } else {
-            entry.expiresAt = valid;
+  CleanUpInterval = setInterval(async () => {
+    try {
+      const now = Date.now();
+      let memoryRemoved = 0;
+
+      // 1. Clean up memory cache
+      for (const [key, entry] of cooldownCache.entries()) {
+        entry.cooldowns = entry.cooldowns.filter((c) => c.expiresAt > now);
+        if (entry.cooldowns.length === 0) {
+          cooldownCache.delete(key);
+          memoryRemoved++;
         }
-    }
+      }
 
-    const result = await db
+      // 2. Clear expired rows from Database
+      const result = await db
         .delete(schema.cooldowns)
         .where(lte(schema.cooldowns.expiresAt, new Date(now)));
 
-    logger.info(
-        `Cleaned up expired cooldowns (removed ${memoryRemoved} keys from memory, ${result.rowCount ?? 0} rows from DB)`
-    );
-    return result;
+      if (memoryRemoved > 0 || (result.rowCount ?? 0) > 0) {
+        logger.info(
+          `Garbage Collector watchdog tick completed. (Flushed ${memoryRemoved} empty cache keys, ${result.rowCount ?? 0} rows cleared from DB).`
+        );
+      }
+    } catch (error) {
+      logger.error("Failed to run global garbage collection loop:", error);
+    }
+  }, CLEAN_UP_TICK_MS);
+}
+
+export function stopCleanUp() {
+  if (CleanUpInterval) {
+    clearInterval(CleanUpInterval);
+    CleanUpInterval = null;
+  }
 }
